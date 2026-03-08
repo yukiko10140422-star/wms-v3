@@ -104,6 +104,26 @@
 | `src/components/settings/FeatureRequestForm.tsx` | DEPT-5 |
 | `src/components/settings/FeatureRequestList.tsx` | DEPT-5 |
 
+## src/components/work/ (追加)
+
+| ファイル | オーナー |
+|---------|---------|
+| `src/components/work/PhotoAttach.tsx` | DEPT-4 |
+| `src/components/work/LiveDrafts.tsx` | DEPT-4 |
+
+## src/components/history/ (追加)
+
+| ファイル | オーナー |
+|---------|---------|
+| `src/components/history/WorkerChart.tsx` | DEPT-5 |
+
+## src/hooks/ (追加)
+
+| ファイル | オーナー |
+|---------|---------|
+| `src/hooks/useOfflineQueue.ts` | DEPT-2 |
+| `src/hooks/useTheme.ts` | DEPT-3 |
+
 ## src/components/print/
 
 | ファイル | オーナー |
