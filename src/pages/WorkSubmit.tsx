@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useStore } from '../store/useStore'
 import WorkerPicker from '../components/work/WorkerPicker'
 import ProcessList from '../components/work/ProcessList'
@@ -8,18 +8,53 @@ import TotalPanel from '../components/work/TotalPanel'
 import Button from '../components/ui/Button'
 import type { Worker, WorkItem, TimerLogEntry } from '../lib/types'
 
+const DRAFT_KEY = 'wms-worksubmit-draft'
+
+interface FormDraft {
+  workerId: string | null
+  workDate: string
+  address: string
+  remarks: string
+  bonusOn: boolean
+  bonusRate: number
+}
+
+function loadDraft(): FormDraft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function saveDraft(draft: FormDraft) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+  } catch { /* ignore */ }
+}
+
+function clearAllDrafts() {
+  localStorage.removeItem(DRAFT_KEY)
+  localStorage.removeItem('wms-quantities-draft')
+  localStorage.removeItem('wms-hourly-draft')
+  localStorage.removeItem('wms-timer-draft')
+}
+
 export default function WorkSubmit() {
   const workers = useStore((s) => s.workers)
   const settings = useStore((s) => s.settings)
   const addRecord = useStore((s) => s.addRecord)
   const showToast = useStore((s) => s.showToast)
 
+  const draft = useRef(loadDraft()).current
+
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null)
-  const [workDate, setWorkDate] = useState(() => new Date().toISOString().split('T')[0])
-  const [address, setAddress] = useState('')
-  const [remarks, setRemarks] = useState('')
-  const [bonusOn, setBonusOn] = useState(false)
-  const [bonusRate, setBonusRate] = useState(() => settings?.bonus_rate ?? 10)
+  const [workDate, setWorkDate] = useState(() => draft?.workDate || new Date().toISOString().split('T')[0])
+  const [address, setAddress] = useState(() => draft?.address || '')
+  const [remarks, setRemarks] = useState(() => draft?.remarks || '')
+  const [bonusOn, setBonusOn] = useState(() => draft?.bonusOn ?? false)
+  const [bonusRate, setBonusRate] = useState(() => draft?.bonusRate ?? settings?.bonus_rate ?? 10)
   const [items, setItems] = useState<WorkItem[]>([])
   const [baseTotal, setBaseTotal] = useState(0)
   const [timerData, setTimerData] = useState<{
@@ -28,6 +63,31 @@ export default function WorkSubmit() {
     timer_log: TimerLogEntry[]
   } | null>(null)
   const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'done'>('idle')
+  const [resetSignal, setResetSignal] = useState(0)
+
+  // 下書きから作業者を復元（workers読み込み後）
+  useEffect(() => {
+    if (draft?.workerId && workers.length > 0 && !selectedWorker) {
+      const found = workers.find((w) => w.id === draft.workerId)
+      if (found) {
+        setSelectedWorker(found)
+        if (!address) setAddress(found.address || '')
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workers])
+
+  // フォーム変更時にlocalStorageへ保存
+  useEffect(() => {
+    saveDraft({
+      workerId: selectedWorker?.id ?? null,
+      workDate,
+      address,
+      remarks,
+      bonusOn,
+      bonusRate,
+    })
+  }, [selectedWorker, workDate, address, remarks, bonusOn, bonusRate])
 
   const handleWorkerSelect = useCallback((worker: Worker) => {
     setSelectedWorker(worker)
@@ -98,6 +158,8 @@ export default function WorkSubmit() {
         setBaseTotal(0)
         setTimerData(null)
         setSubmitState('idle')
+        setResetSignal((s) => s + 1)
+        clearAllDrafts()
       }, 1500)
     } catch {
       setSubmitState('idle')
@@ -157,7 +219,7 @@ export default function WorkSubmit() {
       <div className="space-y-1.5">
         <label className="text-xs font-bold text-muted">加工内容</label>
         <div className="bg-white rounded-xl border border-border p-3">
-          <ProcessList onItemsChange={handleItemsChange} />
+          <ProcessList onItemsChange={handleItemsChange} resetSignal={resetSignal} />
         </div>
       </div>
 

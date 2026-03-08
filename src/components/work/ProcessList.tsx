@@ -19,6 +19,27 @@ import { useStore } from '../../store/useStore'
 import ProcessItem from './ProcessItem'
 import type { WorkItem } from '../../lib/types'
 
+const QTY_STORAGE_KEY = 'wms-quantities-draft'
+const HOURLY_STORAGE_KEY = 'wms-hourly-draft'
+
+function loadQuantities(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(QTY_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function loadHourly(): number {
+  try {
+    const raw = localStorage.getItem(HOURLY_STORAGE_KEY)
+    return raw ? parseFloat(raw) || 0 : 0
+  } catch {
+    return 0
+  }
+}
+
 interface SortableItemProps {
   id: string
   children: (props: { dragHandleProps: Record<string, unknown> }) => React.ReactNode
@@ -47,14 +68,15 @@ function SortableItem({ id, children }: SortableItemProps) {
 
 interface ProcessListProps {
   onItemsChange: (items: WorkItem[], baseTotal: number) => void
+  resetSignal?: number
 }
 
-export default function ProcessList({ onItemsChange }: ProcessListProps) {
+export default function ProcessList({ onItemsChange, resetSignal }: ProcessListProps) {
   const processes = useStore((s) => s.processes)
   const reorderProcesses = useStore((s) => s.reorderProcesses)
 
-  const [quantities, setQuantities] = useState<Record<string, number>>({})
-  const [hourlyHours, setHourlyHours] = useState<number>(0)
+  const [quantities, setQuantities] = useState<Record<string, number>>(loadQuantities)
+  const [hourlyHours, setHourlyHours] = useState<number>(loadHourly)
   const [sortedIds, setSortedIds] = useState<string[]>([])
 
   // Sync sortedIds when processes change
@@ -63,6 +85,29 @@ export default function ProcessList({ onItemsChange }: ProcessListProps) {
   }, [processes])
 
   const HOURLY_RATE = 1200
+
+  // リセットシグナルで入力をクリア
+  useEffect(() => {
+    if (resetSignal && resetSignal > 0) {
+      setQuantities({})
+      setHourlyHours(0)
+      localStorage.removeItem(QTY_STORAGE_KEY)
+      localStorage.removeItem(HOURLY_STORAGE_KEY)
+    }
+  }, [resetSignal])
+
+  // 数量をlocalStorageに保存
+  useEffect(() => {
+    try {
+      localStorage.setItem(QTY_STORAGE_KEY, JSON.stringify(quantities))
+    } catch { /* ignore */ }
+  }, [quantities])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HOURLY_STORAGE_KEY, String(hourlyHours))
+    } catch { /* ignore */ }
+  }, [hourlyHours])
 
   const buildItems = useCallback(
     (qtys: Record<string, number>, hours: number): { items: WorkItem[]; baseTotal: number } => {
@@ -94,6 +139,15 @@ export default function ProcessList({ onItemsChange }: ProcessListProps) {
     },
     [processes]
   )
+
+  // 初回マウント時に復元した数量から合計を通知
+  useEffect(() => {
+    if (processes.length > 0) {
+      const { items, baseTotal } = buildItems(quantities, hourlyHours)
+      onItemsChange(items, baseTotal)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [processes])
 
   const handleQuantityChange = useCallback(
     (processId: string, qty: number) => {
