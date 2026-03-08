@@ -1,13 +1,14 @@
 import { useState, useCallback } from 'react'
-import { ArrowLeft, Delete, Cherry } from 'lucide-react'
+import { ArrowLeft, Delete, Shield } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import type { Worker } from '../lib/types'
 
 interface LoginProps {
   onLoginSuccess: () => void
+  onAdminAccess: () => void
 }
 
-export default function Login({ onLoginSuccess }: LoginProps) {
+export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
   const { workers, loginWorker, showToast } = useStore()
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null)
   const [pin, setPin] = useState('')
@@ -64,7 +65,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     <div className="min-h-screen bg-background flex flex-col items-center justify-start px-4 py-8">
       {/* Branding */}
       <div className="flex items-center gap-3 mb-10">
-        <Cherry className="w-8 h-8 text-mango" />
+        <span className="text-3xl">🥭</span>
         <h1 className="text-2xl font-bold text-ink tracking-tight">World Mango System</h1>
       </div>
 
@@ -198,6 +199,18 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           </div>
         </div>
       )}
+
+      {/* Admin access button */}
+      <div className="mt-10">
+        <button
+          type="button"
+          onClick={onAdminAccess}
+          className="flex items-center gap-2 text-sm text-muted hover:text-mango-dark transition-colors cursor-pointer"
+        >
+          <Shield className="w-4 h-4" />
+          管理者としてログイン
+        </button>
+      </div>
     </div>
   )
 }

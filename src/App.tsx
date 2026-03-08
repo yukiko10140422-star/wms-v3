@@ -57,9 +57,11 @@ export default function App() {
 
   const handleUnlock = (password: string): boolean => {
     const success = unlockAdmin(password)
-    if (success && pendingAdminPage) {
-      setCurrentPage(pendingAdminPage)
-      setPendingAdminPage(null)
+    if (success) {
+      if (pendingAdminPage) {
+        setCurrentPage(pendingAdminPage)
+        setPendingAdminPage(null)
+      }
       setShowAdminGuard(false)
     }
     return success
@@ -94,10 +96,24 @@ export default function App() {
     )
   }
 
-  if (!loggedInWorker) {
+  if (!loggedInWorker && !adminUnlocked) {
     return (
       <div className="min-h-screen bg-background text-ink font-sans">
-        <Login onLoginSuccess={() => setCurrentPage('work')} />
+        <Login
+          onLoginSuccess={() => setCurrentPage('work')}
+          onAdminAccess={() => {
+            setPendingAdminPage('settings')
+            setShowAdminGuard(true)
+          }}
+        />
+        <AdminGuard
+          open={showAdminGuard}
+          onClose={() => {
+            setShowAdminGuard(false)
+            setPendingAdminPage(null)
+          }}
+          onUnlock={handleUnlock}
+        />
         <Toast />
       </div>
     )
