@@ -8,6 +8,7 @@ import Toast from './components/ui/Toast'
 import UpdateNotice from './components/ui/UpdateNotice'
 import UsageGuide from './components/ui/UsageGuide'
 import { useOfflineQueue } from './hooks/useOfflineQueue'
+import { useTheme } from './hooks/useTheme'
 import WorkSubmit from './pages/WorkSubmit'
 import ShiftRequest from './pages/ShiftRequest'
 import History from './pages/History'
@@ -28,6 +29,7 @@ export default function App() {
   const unlockAdmin = useStore((s) => s.unlockAdmin)
 
   const { queueLength } = useOfflineQueue()
+  const { theme, setTheme } = useTheme()
 
   useEffect(() => {
     fetchAll()
@@ -82,6 +84,8 @@ export default function App() {
           onRequestAdmin={handleRequestAdmin}
           onOpenGuide={() => setShowGuide(true)}
           adminUnlocked={adminUnlocked}
+          theme={theme}
+          onThemeChange={setTheme}
         />
 
         <main className="flex-1 min-h-screen pb-20 lg:pb-0">
@@ -97,6 +101,8 @@ export default function App() {
         onRequestAdmin={handleRequestAdmin}
         onOpenGuide={() => setShowGuide(true)}
         adminUnlocked={adminUnlocked}
+        theme={theme}
+        onThemeChange={setTheme}
       />
 
       <AdminGuard

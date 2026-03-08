@@ -8,6 +8,7 @@
   --color-yellow: #d4a017;
   --color-yellow-light: #fef9e7;
   --color-background: #fef7ee;
+  --color-cream: #faf0e2;
   --color-white: #ffffff;
   --color-ink: #1a1008;
   --color-muted: #6b5234;
@@ -19,4 +20,24 @@
   --color-red-light: #fce4ec;
   --font-sans: 'Noto Sans JP', sans-serif;
   --font-mono: 'DM Mono', monospace;
+}
+
+/* ダークモード */
+.dark {
+  --color-mango: #f59e0b;
+  --color-mango-light: #2a1f0a;
+  --color-mango-dark: #fbbf24;
+  --color-yellow: #eab308;
+  --color-yellow-light: #1c1a0a;
+  --color-background: #0f0d0a;
+  --color-cream: #1a1610;
+  --color-white: #1c1814;
+  --color-ink: #f5e6d3;
+  --color-muted: #a08c70;
+  --color-border: #3d3425;
+  --color-border-dark: #5a4a34;
+  --color-green: #4ade80;
+  --color-green-light: #0a1f10;
+  --color-red: #f87171;
+  --color-red-light: #1f0a0a;
 }

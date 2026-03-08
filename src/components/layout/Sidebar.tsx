@@ -1,4 +1,5 @@
-import { ClipboardList, CalendarDays, FileText, Users, Settings, Lock, HelpCircle } from 'lucide-react'
+import { ClipboardList, CalendarDays, FileText, Users, Settings, Lock, HelpCircle, Sun, Moon, Monitor } from 'lucide-react'
+import type { Theme } from '../../hooks/useTheme'
 
 interface SidebarProps {
   currentPage: string
@@ -6,6 +7,8 @@ interface SidebarProps {
   onRequestAdmin: (page: string) => void
   onOpenGuide: () => void
   adminUnlocked: boolean
+  theme?: Theme
+  onThemeChange?: (theme: Theme) => void
 }
 
 interface NavItem {
@@ -26,7 +29,7 @@ const adminItems: NavItem[] = [
   { id: 'settings', label: '設定', icon: <Settings className="w-5 h-5" />, admin: true },
 ]
 
-export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked }: SidebarProps) {
+export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked, theme, onThemeChange }: SidebarProps) {
   const handleClick = (item: NavItem) => {
     if (item.admin && !adminUnlocked) {
       onRequestAdmin(item.id)
@@ -115,9 +118,33 @@ export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpe
         </button>
       </div>
 
+      {/* Theme Toggle */}
+      {onThemeChange && (
+        <div className="px-3 mb-2">
+          <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
+            {([
+              { value: 'light' as Theme, icon: <Sun className="w-3.5 h-3.5" />, label: '明' },
+              { value: 'system' as Theme, icon: <Monitor className="w-3.5 h-3.5" />, label: '自動' },
+              { value: 'dark' as Theme, icon: <Moon className="w-3.5 h-3.5" />, label: '暗' },
+            ]).map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => onThemeChange(opt.value)}
+                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[10px] cursor-pointer transition-all ${
+                  theme === opt.value ? 'bg-white/25 font-bold' : 'opacity-60 hover:opacity-100'
+                }`}
+              >
+                {opt.icon}
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <div className="px-5 py-4 text-[10px] opacity-30">
-        WMS v2.1
+        WMS v2.3
       </div>
     </aside>
   )

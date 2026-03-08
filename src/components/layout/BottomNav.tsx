@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ClipboardList, CalendarDays, Shield, HelpCircle, FileText, Users, Settings, X } from 'lucide-react'
+import { ClipboardList, CalendarDays, Shield, HelpCircle, FileText, Users, Settings, X, Sun, Moon, Monitor } from 'lucide-react'
+import type { Theme } from '../../hooks/useTheme'
 
 interface BottomNavProps {
   currentPage: string
@@ -8,6 +9,8 @@ interface BottomNavProps {
   onRequestAdmin: (page: string) => void
   onOpenGuide: () => void
   adminUnlocked: boolean
+  theme?: Theme
+  onThemeChange?: (theme: Theme) => void
 }
 
 const mainItems = [
@@ -21,7 +24,7 @@ const adminMenuItems = [
   { id: 'settings', label: '設定', icon: Settings },
 ]
 
-export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked }: BottomNavProps) {
+export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked, theme, onThemeChange }: BottomNavProps) {
   const [showAdminMenu, setShowAdminMenu] = useState(false)
 
   const handleAdminItemClick = (id: string) => {
@@ -77,6 +80,31 @@ export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onO
                   )
                 })}
               </div>
+
+              {/* Theme Toggle */}
+              {onThemeChange && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <div className="text-[10px] font-bold text-muted mb-2">テーマ</div>
+                  <div className="flex items-center gap-1 bg-cream rounded-lg p-1">
+                    {([
+                      { value: 'light' as Theme, icon: <Sun className="w-3.5 h-3.5" />, label: '明るい' },
+                      { value: 'system' as Theme, icon: <Monitor className="w-3.5 h-3.5" />, label: '自動' },
+                      { value: 'dark' as Theme, icon: <Moon className="w-3.5 h-3.5" />, label: '暗い' },
+                    ]).map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => onThemeChange(opt.value)}
+                        className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-xs cursor-pointer transition-all ${
+                          theme === opt.value ? 'bg-white shadow-sm font-bold text-ink' : 'text-muted hover:text-ink'
+                        }`}
+                      >
+                        {opt.icon}
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
