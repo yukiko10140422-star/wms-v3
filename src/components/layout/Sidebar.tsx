@@ -1,4 +1,4 @@
-import { ClipboardList, CalendarDays, Wallet, User, FileText, Users, Settings, Lock, HelpCircle, Sun, Moon, Monitor } from 'lucide-react'
+import { ClipboardList, CalendarDays, Wallet, User, FileText, Users, Settings, Lock, HelpCircle, Sun, Moon, Monitor, LogOut, RefreshCw } from 'lucide-react'
 import type { Theme } from '../../hooks/useTheme'
 
 interface SidebarProps {
@@ -11,6 +11,8 @@ interface SidebarProps {
   onThemeChange?: (theme: Theme) => void
   workerName?: string
   workerAvatar?: string
+  onLogout?: () => void
+  onSwitchWorker?: () => void
 }
 
 interface NavItem {
@@ -33,7 +35,7 @@ const adminItems: NavItem[] = [
   { id: 'settings', label: '設定', icon: <Settings className="w-5 h-5" />, admin: true },
 ]
 
-export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked, theme, onThemeChange, workerName, workerAvatar }: SidebarProps) {
+export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked, theme, onThemeChange, workerName, workerAvatar, onLogout, onSwitchWorker }: SidebarProps) {
   const handleClick = (item: NavItem) => {
     if (item.admin && !adminUnlocked) {
       onRequestAdmin(item.id)
@@ -56,8 +58,8 @@ export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpe
       </div>
 
       {/* Worker Profile */}
-      {workerName && (
-        <div className="px-5 pb-4">
+      <div className="px-5 pb-4">
+        {workerName ? (
           <div className="flex items-center gap-2">
             {workerAvatar ? (
               <img src={workerAvatar} alt={workerName} className="w-8 h-8 rounded-full object-cover" />
@@ -66,13 +68,30 @@ export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpe
                 {workerName.charAt(0)}
               </div>
             )}
-            <div>
-              <div className="text-sm font-bold">{workerName}</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold truncate">{workerName}</div>
               <div className="text-xs opacity-60">ログイン中</div>
             </div>
+            {adminUnlocked && onSwitchWorker && (
+              <button
+                onClick={onSwitchWorker}
+                className="p-1.5 rounded-lg hover:bg-white/15 transition-colors cursor-pointer"
+                title="作業者を切替"
+              >
+                <RefreshCw className="w-3.5 h-3.5 opacity-70" />
+              </button>
+            )}
           </div>
-        </div>
-      )}
+        ) : adminUnlocked ? (
+          <button
+            onClick={onSwitchWorker}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors cursor-pointer text-sm"
+          >
+            <User className="w-4 h-4" />
+            <span>作業者としてログイン</span>
+          </button>
+        ) : null}
+      </div>
 
       {/* Sync Status */}
       <div className="px-5 pb-4">

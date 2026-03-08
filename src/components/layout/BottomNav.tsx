@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ClipboardList, CalendarDays, Wallet, User, Shield, FileText, Users, Settings, X, Sun, Moon, Monitor } from 'lucide-react'
+import { ClipboardList, CalendarDays, Wallet, User, Shield, FileText, Users, Settings, X, Sun, Moon, Monitor, RefreshCw, LogOut } from 'lucide-react'
 import type { Theme } from '../../hooks/useTheme'
 
 interface BottomNavProps {
@@ -11,6 +11,9 @@ interface BottomNavProps {
   adminUnlocked: boolean
   theme?: Theme
   onThemeChange?: (theme: Theme) => void
+  workerName?: string
+  onLogout?: () => void
+  onSwitchWorker?: () => void
 }
 
 const mainItems = [
@@ -26,7 +29,7 @@ const adminMenuItems = [
   { id: 'settings', label: '設定', icon: Settings },
 ]
 
-export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked, theme, onThemeChange }: BottomNavProps) {
+export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked, theme, onThemeChange, workerName, onLogout, onSwitchWorker }: BottomNavProps) {
   const [showAdminMenu, setShowAdminMenu] = useState(false)
 
   const handleAdminItemClick = (id: string) => {
@@ -82,6 +85,30 @@ export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onO
                   )
                 })}
               </div>
+
+              {/* Worker Switch / Logout */}
+              {adminUnlocked && (
+                <div className="mt-3 pt-3 border-t border-border space-y-1">
+                  {onSwitchWorker && (
+                    <button
+                      onClick={() => { setShowAdminMenu(false); onSwitchWorker() }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-ink hover:bg-mango-light transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className="w-5 h-5" />
+                      <span className="text-sm">{workerName ? '作業者を切替' : '作業者としてログイン'}</span>
+                    </button>
+                  )}
+                  {workerName && onLogout && (
+                    <button
+                      onClick={() => { setShowAdminMenu(false); onLogout() }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red hover:bg-red-light transition-colors cursor-pointer"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      <span className="text-sm">作業者をログアウト</span>
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Theme Toggle */}
               {onThemeChange && (

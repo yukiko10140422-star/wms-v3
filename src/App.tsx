@@ -34,6 +34,8 @@ export default function App() {
   const restoreWorkerSession = useStore((s) => s.restoreWorkerSession)
   const workerSessionLoaded = useStore((s) => s.workerSessionLoaded)
   const logoutWorker = useStore((s) => s.logoutWorker)
+  const loginWorkerAsAdmin = useStore((s) => s.loginWorkerAsAdmin)
+  const workers = useStore((s) => s.workers)
 
   const { queueLength } = useOfflineQueue()
   const { theme, setTheme } = useTheme()
@@ -74,16 +76,58 @@ export default function App() {
   const handleUnlock = (password: string): boolean => {
     const success = unlockAdmin(password)
     if (success) {
-      if (pendingAdminPage) {
-        setCurrentPage(pendingAdminPage)
-        setPendingAdminPage(null)
-      }
+      setCurrentPage(pendingAdminPage || 'settings')
+      setPendingAdminPage(null)
       setShowAdminGuard(false)
     }
     return success
   }
 
+  const workerPages = ['work', 'my-shifts', 'my-salary', 'my-settings']
+
+  const renderWorkerPicker = () => (
+    <div className="max-w-md mx-auto py-8">
+      <div className="text-center mb-8">
+        <div className="text-4xl mb-3">🥭</div>
+        <h2 className="text-xl font-bold text-ink">作業者を選択</h2>
+        <p className="text-sm text-muted mt-1">作業者としてログインしてください</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {workers.map((worker) => {
+          const initial = worker.name.charAt(0)
+          return (
+            <button
+              key={worker.id}
+              type="button"
+              onClick={() => {
+                loginWorkerAsAdmin(worker.id)
+                setCurrentPage('work')
+              }}
+              className="flex flex-col items-center gap-2 rounded-xl px-3 py-4 bg-white border border-border shadow-sm hover:shadow-md hover:border-mango cursor-pointer active:scale-95 transition-all duration-150"
+            >
+              {worker.avatar ? (
+                <img src={worker.avatar} alt={worker.name} className="w-14 h-14 rounded-full object-cover" />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-mango-light text-mango-dark flex items-center justify-center text-xl font-bold">
+                  {initial}
+                </div>
+              )}
+              <span className="text-sm font-medium text-ink truncate w-full text-center">
+                {worker.name}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+
   const renderPage = () => {
+    // 管理者モードで作業者未ログイン → 作業者ページは作業者選択を表示
+    if (!loggedInWorker && adminUnlocked && workerPages.includes(currentPage)) {
+      return renderWorkerPicker()
+    }
+
     switch (currentPage) {
       case 'work':
         return <WorkSubmit />
@@ -150,6 +194,8 @@ export default function App() {
           onThemeChange={setTheme}
           workerName={loggedInWorker?.name}
           workerAvatar={loggedInWorker?.avatar}
+          onLogout={() => { logoutWorker(); setCurrentPage('settings') }}
+          onSwitchWorker={() => { logoutWorker(); setCurrentPage('work') }}
         />
 
         <main className="flex-1 min-w-0 min-h-screen pb-20 lg:pb-0 safe-top">
@@ -167,6 +213,9 @@ export default function App() {
         adminUnlocked={adminUnlocked}
         theme={theme}
         onThemeChange={setTheme}
+        workerName={loggedInWorker?.name}
+        onLogout={() => { logoutWorker(); setCurrentPage('settings') }}
+        onSwitchWorker={() => { logoutWorker(); setCurrentPage('work') }}
       />
 
       <AdminGuard

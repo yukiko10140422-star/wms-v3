@@ -35,6 +35,7 @@ interface StoreState {
 
   // Worker auth
   loginWorker: (workerId: string, pin: string) => boolean
+  loginWorkerAsAdmin: (workerId: string) => void
   logoutWorker: () => void
   restoreWorkerSession: () => void
   updateWorkerPin: (workerId: string, newPin: string) => Promise<boolean>
@@ -278,8 +279,17 @@ export const useStore = create<StoreState>((set, get) => ({
     return true
   },
 
+  loginWorkerAsAdmin: (workerId: string) => {
+    const { workers, adminUnlocked } = get()
+    if (!adminUnlocked) return
+    const worker = workers.find((w) => w.id === workerId)
+    if (!worker) return
+    set({ loggedInWorker: worker })
+    localStorage.setItem('wms-worker-session', JSON.stringify({ workerId: worker.id }))
+  },
+
   logoutWorker: () => {
-    set({ loggedInWorker: null, adminUnlocked: false })
+    set({ loggedInWorker: null })
     localStorage.removeItem('wms-worker-session')
     // 下書きデータをクリア（他ユーザーへのデータ漏洩防止）
     localStorage.removeItem('wms-worksubmit-draft')
