@@ -5,6 +5,8 @@ import BottomNav from './components/layout/BottomNav'
 import SyncBar from './components/layout/SyncBar'
 import AdminGuard from './components/layout/AdminGuard'
 import Toast from './components/ui/Toast'
+import UpdateNotice from './components/ui/UpdateNotice'
+import UsageGuide from './components/ui/UsageGuide'
 import WorkSubmit from './pages/WorkSubmit'
 import ShiftRequest from './pages/ShiftRequest'
 import History from './pages/History'
@@ -14,6 +16,7 @@ import Settings from './pages/Settings'
 export default function App() {
   const [currentPage, setCurrentPage] = useState('work')
   const [showAdminGuard, setShowAdminGuard] = useState(false)
+  const [showGuide, setShowGuide] = useState(false)
   const [pendingAdminPage, setPendingAdminPage] = useState<string | null>(null)
 
   const fetchAll = useStore((s) => s.fetchAll)
@@ -74,6 +77,7 @@ export default function App() {
           currentPage={currentPage}
           onNavigate={handleNavigate}
           onRequestAdmin={handleRequestAdmin}
+          onOpenGuide={() => setShowGuide(true)}
           adminUnlocked={adminUnlocked}
         />
 
@@ -88,6 +92,7 @@ export default function App() {
         currentPage={currentPage}
         onNavigate={handleNavigate}
         onRequestAdmin={handleRequestAdmin}
+        onOpenGuide={() => setShowGuide(true)}
         adminUnlocked={adminUnlocked}
       />
 
@@ -100,6 +105,8 @@ export default function App() {
         onUnlock={handleUnlock}
       />
 
+      <UpdateNotice />
+      <UsageGuide open={showGuide} onClose={() => setShowGuide(false)} />
       <Toast />
     </div>
   )

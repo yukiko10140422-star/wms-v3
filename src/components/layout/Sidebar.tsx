@@ -1,9 +1,10 @@
-import { ClipboardList, CalendarDays, FileText, Users, Settings, Lock } from 'lucide-react'
+import { ClipboardList, CalendarDays, FileText, Users, Settings, Lock, HelpCircle } from 'lucide-react'
 
 interface SidebarProps {
   currentPage: string
   onNavigate: (page: string) => void
   onRequestAdmin: (page: string) => void
+  onOpenGuide: () => void
   adminUnlocked: boolean
 }
 
@@ -25,7 +26,7 @@ const adminItems: NavItem[] = [
   { id: 'settings', label: '設定', icon: <Settings className="w-5 h-5" />, admin: true },
 ]
 
-export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, adminUnlocked }: SidebarProps) {
+export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked }: SidebarProps) {
   const handleClick = (item: NavItem) => {
     if (item.admin && !adminUnlocked) {
       onRequestAdmin(item.id)
@@ -103,9 +104,20 @@ export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, admin
         </div>
       </nav>
 
+      {/* Guide */}
+      <div className="px-3 mb-2">
+        <button
+          onClick={onOpenGuide}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer hover:bg-white/15"
+        >
+          <HelpCircle className="w-5 h-5" />
+          <span className="text-sm">使い方ガイド</span>
+        </button>
+      </div>
+
       {/* Footer */}
       <div className="px-5 py-4 text-[10px] opacity-30">
-        WMS v2.0
+        WMS v2.1
       </div>
     </aside>
   )

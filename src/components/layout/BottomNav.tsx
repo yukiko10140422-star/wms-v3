@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ClipboardList, CalendarDays, Shield, MoreHorizontal, FileText, Users, Settings, X } from 'lucide-react'
+import { ClipboardList, CalendarDays, Shield, HelpCircle, FileText, Users, Settings, X } from 'lucide-react'
 
 interface BottomNavProps {
   currentPage: string
   onNavigate: (page: string) => void
   onRequestAdmin: (page: string) => void
+  onOpenGuide: () => void
   adminUnlocked: boolean
 }
 
@@ -20,7 +21,7 @@ const adminMenuItems = [
   { id: 'settings', label: '設定', icon: Settings },
 ]
 
-export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, adminUnlocked }: BottomNavProps) {
+export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked }: BottomNavProps) {
   const [showAdminMenu, setShowAdminMenu] = useState(false)
 
   const handleAdminItemClick = (id: string) => {
@@ -116,12 +117,13 @@ export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, adm
             <span className="text-[10px]">管理者</span>
           </button>
 
-          {/* More Button */}
+          {/* Guide Button */}
           <button
+            onClick={onOpenGuide}
             className="flex flex-col items-center gap-0.5 px-3 py-1 cursor-pointer text-muted transition-colors"
           >
-            <MoreHorizontal className="w-5 h-5" />
-            <span className="text-[10px]">もっと</span>
+            <HelpCircle className="w-5 h-5" />
+            <span className="text-[10px]">ガイド</span>
           </button>
         </div>
       </nav>
