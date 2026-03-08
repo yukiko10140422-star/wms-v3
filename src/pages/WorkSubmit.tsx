@@ -9,7 +9,7 @@ import Timer from '../components/work/Timer'
 import TotalPanel from '../components/work/TotalPanel'
 import Button from '../components/ui/Button'
 import LiveDrafts from '../components/work/LiveDrafts'
-import type { Worker, WorkItem, TimerLogEntry } from '../lib/types'
+import type { Worker, WorkItem, TimerLogEntry, Draft } from '../lib/types'
 
 const DRAFT_KEY = 'wms-worksubmit-draft'
 
@@ -84,6 +84,7 @@ export default function WorkSubmit() {
   } | null>(null)
   const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'done'>('idle')
   const [resetSignal, setResetSignal] = useState(0)
+  const [importData, setImportData] = useState<{ quantities: Record<string, number>; hourlyHours: number } | null>(null)
 
   // マスタデータ変更検知用
   const [masterChanged, setMasterChanged] = useState(false)
@@ -180,6 +181,37 @@ export default function WorkSubmit() {
     setItems(newItems)
     setBaseTotal(newBaseTotal)
   }, [])
+
+  // 他端末の下書きを取り込む
+  const handleImportDraft = useCallback((draft: Draft) => {
+    const confirmed = confirm(
+      `${draft.worker_name || '（未選択）'}さんのデータを取り込みますか？\n現在の入力内容は上書きされます。`
+    )
+    if (!confirmed) return
+
+    // 作業者を復元
+    if (draft.worker_id) {
+      const found = workers.find((w) => w.id === draft.worker_id)
+      if (found) {
+        setSelectedWorker(found)
+        setAddress(found.address || '')
+      }
+    }
+
+    // フォームフィールド復元
+    if (draft.work_date) setWorkDate(draft.work_date)
+    if (draft.remarks) setRemarks(draft.remarks)
+    setBonusOn(draft.bonus_on)
+    setBonusRate(draft.bonus_rate)
+
+    // 数量をProcessListに反映
+    setImportData({
+      quantities: draft.quantities || {},
+      hourlyHours: draft.hourly_hours || 0,
+    })
+
+    showToast('データを取り込みました', 'success')
+  }, [workers, showToast])
 
   const handleTimerApply = useCallback(
     (result: { hours: number; timer_work_ms: number; timer_log: TimerLogEntry[] }) => {
@@ -355,7 +387,7 @@ export default function WorkSubmit() {
       </div>
 
       {/* Live Drafts from other devices */}
-      <LiveDrafts currentDeviceId={deviceId} />
+      <LiveDrafts currentDeviceId={deviceId} onImportDraft={handleImportDraft} />
 
       {/* Worker Picker */}
       <div className="space-y-1.5">
@@ -383,7 +415,7 @@ export default function WorkSubmit() {
       <div className="space-y-1.5">
         <label className="text-xs font-bold text-muted">加工内容</label>
         <div className="bg-white rounded-xl border border-border p-3">
-          <ProcessList onItemsChange={handleItemsChange} resetSignal={resetSignal} />
+          <ProcessList onItemsChange={handleItemsChange} resetSignal={resetSignal} importData={importData} />
         </div>
       </div>
 

@@ -69,9 +69,10 @@ function SortableItem({ id, children }: SortableItemProps) {
 interface ProcessListProps {
   onItemsChange: (items: WorkItem[], baseTotal: number) => void
   resetSignal?: number
+  importData?: { quantities: Record<string, number>; hourlyHours: number } | null
 }
 
-export default function ProcessList({ onItemsChange, resetSignal }: ProcessListProps) {
+export default function ProcessList({ onItemsChange, resetSignal, importData }: ProcessListProps) {
   const processes = useStore((s) => s.processes)
   const reorderProcesses = useStore((s) => s.reorderProcesses)
 
@@ -95,6 +96,14 @@ export default function ProcessList({ onItemsChange, resetSignal }: ProcessListP
       localStorage.removeItem(HOURLY_STORAGE_KEY)
     }
   }, [resetSignal])
+
+  // 外部からのデータ取り込み
+  useEffect(() => {
+    if (importData) {
+      setQuantities(importData.quantities)
+      setHourlyHours(importData.hourlyHours)
+    }
+  }, [importData])
 
   // 数量をlocalStorageに保存
   useEffect(() => {
