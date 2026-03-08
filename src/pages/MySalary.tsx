@@ -126,7 +126,7 @@ export default function MySalary() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
+      <div className="grid grid-cols-2 gap-3 mb-6 min-w-0">
         <div className="bg-white rounded-xl p-4 border border-border overflow-hidden">
           <div className="flex items-center gap-2 text-muted text-xs font-bold mb-1">
             <Wallet className="w-4 h-4 text-mango shrink-0" />
@@ -179,7 +179,7 @@ export default function MySalary() {
           この月の記録はありません
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 w-full min-w-0 overflow-hidden">
           {filteredRecords.map((record) => {
             const isExpanded = expandedId === record.id
             const status = statusConfig[record.status]
@@ -197,7 +197,7 @@ export default function MySalary() {
                   onClick={() =>
                     setExpandedId(isExpanded ? null : record.id)
                   }
-                  className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+                  className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors min-w-0"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -236,21 +236,21 @@ export default function MySalary() {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="px-4 pb-4 border-t border-border pt-3 overflow-x-auto">
+                      <div className="px-4 pb-4 border-t border-border pt-3 overflow-hidden">
                         {/* Item Table */}
-                        <table className="w-full text-sm mb-3 min-w-0">
+                        <table className="w-full text-sm mb-3 table-fixed">
                           <thead>
                             <tr className="text-xs text-muted border-b border-border">
-                              <th className="text-left py-1 font-bold">
+                              <th className="text-left py-1 font-bold w-[40%]">
                                 加工の種類
                               </th>
-                              <th className="text-right py-1 font-bold">
+                              <th className="text-right py-1 font-bold w-[20%]">
                                 単価
                               </th>
-                              <th className="text-right py-1 font-bold">
+                              <th className="text-right py-1 font-bold w-[15%]">
                                 数量
                               </th>
-                              <th className="text-right py-1 font-bold">
+                              <th className="text-right py-1 font-bold w-[25%]">
                                 小計
                               </th>
                             </tr>
@@ -261,16 +261,16 @@ export default function MySalary() {
                                 key={idx}
                                 className="border-b border-border/50"
                               >
-                                <td className="py-1.5">{item.name}</td>
-                                <td className="text-right py-1.5 font-mono text-xs">
+                                <td className="py-1.5 truncate">{item.name}</td>
+                                <td className="text-right py-1.5 font-mono text-xs whitespace-nowrap">
                                   &yen;{item.price.toLocaleString()}
                                 </td>
-                                <td className="text-right py-1.5 font-mono text-xs">
+                                <td className="text-right py-1.5 font-mono text-xs whitespace-nowrap">
                                   {item.isHourly
                                     ? `${item.qty}h`
                                     : item.qty}
                                 </td>
-                                <td className="text-right py-1.5 font-mono text-xs font-bold">
+                                <td className="text-right py-1.5 font-mono text-xs font-bold whitespace-nowrap">
                                   &yen;{item.sub.toLocaleString()}
                                 </td>
                               </tr>
@@ -280,7 +280,7 @@ export default function MySalary() {
 
                         {/* Bonus Info */}
                         {record.bonus_on && (
-                          <div className="text-xs bg-mango-light text-mango-dark rounded-lg px-3 py-2 mb-3">
+                          <div className="text-xs bg-mango-light text-mango-dark rounded-lg px-3 py-2 mb-3 break-words">
                             上乗せ +{record.bonus_rate || 10}%: &yen;
                             {record.bonus_amt.toLocaleString()}
                           </div>
@@ -288,7 +288,7 @@ export default function MySalary() {
 
                         {/* Remarks */}
                         {record.remarks && (
-                          <div className="text-xs text-muted bg-gray-50 rounded-lg px-3 py-2">
+                          <div className="text-xs text-muted bg-gray-50 rounded-lg px-3 py-2 break-words">
                             備考: {record.remarks}
                           </div>
                         )}
