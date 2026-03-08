@@ -109,9 +109,9 @@ export default function PaymentDoc({
       .map((r) => `[${r.date}] ${r.remarks}`)
       .join('\n')
 
-    let html = `<div class="dh"><div><div class="dt">支 払 明 細 書</div><div class="dn">文書番号：${docNo}</div></div><div class="di"><div class="dc2">${comp}</div>${mgr ? `<div class="ds">担当：${mgr}</div>` : ''}${addr ? `<div class="ds">${addr}</div>` : ''}</div></div>`
+    let html = `<div class="dh"><div><div class="dt">請 求 書</div><div class="dn">文書番号：${docNo}</div></div><div class="di"><div class="ml">支払元</div><div class="dc2">宮崎友祈子</div></div></div>`
 
-    html += `<div class="dm"><div class="mb"><div class="ml">支払先</div><div class="mv">${wn} 様</div>${wa ? `<div style="font-size:8.5pt;color:#555;margin-top:1mm;">${wa}</div>` : ''}</div><div class="mb"><div class="ml">対象期間</div><div class="mv">${title}</div><div style="font-size:7.5pt;color:#555;margin-top:1mm;">作業件数：${records.length}件</div></div></div>`
+    html += `<div class="dm"><div class="mb"><div class="ml">請求者</div><div class="mv">${wn}</div>${wa ? `<div style="font-size:8.5pt;color:#555;margin-top:1mm;">${wa}</div>` : ''}</div><div class="mb"><div class="ml">対象期間</div><div class="mv">${title}</div><div style="font-size:7.5pt;color:#555;margin-top:1mm;">作業件数：${records.length}件</div></div></div>`
 
     html += `<div class="dp">■ 加工作業明細</div>`
     html += `<table class="dtb"><thead><tr><th style="width:22mm;">作業日</th><th>加工の種類</th><th style="width:17mm;">単価</th><th style="width:17mm;">数量</th><th style="width:21mm;">金額（税抜）</th><th style="width:17mm;">消費税</th></tr></thead><tbody>${rows}</tbody></table>`
@@ -143,7 +143,7 @@ export default function PaymentDoc({
     html += `<div class="sa"><div class="sb"><div class="sc"></div><div class="sl">確認印</div></div><div class="sb"><div class="sc"></div><div class="sl">承認印</div></div></div>`
 
     // Footer
-    html += `<div class="ft">本明細書は${new Date().toLocaleDateString('ja-JP')}に発行されました。 | ${comp}</div>`
+    html += `<div class="ft">本請求書は${new Date().toLocaleDateString('ja-JP')}に発行されました。 | 宮崎友祈子</div>`
 
     return html
   }, [records, settings, workers, title])
