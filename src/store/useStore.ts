@@ -566,6 +566,8 @@ export const useStore = create<StoreState>((set, get) => ({
   // Toast
   showToast: (message, type) => {
     set({ toast: { message, type } })
-    setTimeout(() => set({ toast: null }), 3000)
+    // エラーは長めに表示（読み切れない問題を解消）
+    const duration = type === 'error' ? 5000 : 2500
+    setTimeout(() => set({ toast: null }), duration)
   },
 }))

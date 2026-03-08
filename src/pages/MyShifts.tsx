@@ -222,6 +222,11 @@ export default function MyShifts() {
     }
   }
 
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'calendar', label: 'カレンダー', icon: <Eye className="w-4 h-4" /> },
     { key: 'request', label: 'シフト希望', icon: <CalendarDays className="w-4 h-4" /> },
@@ -237,7 +242,7 @@ export default function MyShifts() {
           <button
             key={tab.key}
             type="button"
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => handleTabChange(tab.key)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-bold transition-colors cursor-pointer
               ${activeTab === tab.key
                 ? 'text-mango-dark border-b-2 border-mango'
@@ -544,7 +549,7 @@ export default function MyShifts() {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-ink mb-1">理由</label>
+            <label className="block text-sm font-bold text-ink mb-1">理由 <span className="text-red text-xs">（必須）</span></label>
             <textarea
               value={absenceReason}
               onChange={(e) => setAbsenceReason(e.target.value)}

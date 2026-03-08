@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { ArrowLeft, Delete, Shield } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import type { Worker } from '../lib/types'
@@ -60,6 +60,22 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
   const handleClear = useCallback(() => {
     setPin('')
   }, [])
+
+  // 物理キーボード対応（PCや外付けキーボード使用時）
+  useEffect(() => {
+    if (!selectedWorkerId) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key >= '0' && e.key <= '9') {
+        handlePinDigit(e.key)
+      } else if (e.key === 'Backspace') {
+        handleBackspace()
+      } else if (e.key === 'Escape') {
+        handleBack()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedWorkerId, handlePinDigit, handleBackspace, handleBack])
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-start px-4 py-8">

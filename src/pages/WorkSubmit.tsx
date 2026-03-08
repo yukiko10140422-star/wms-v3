@@ -246,13 +246,27 @@ export default function WorkSubmit() {
       return
     }
 
-    // 2. 加工内容のチェック
+    // 2. 日付のチェック
+    const workDateObj = new Date(workDate)
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+    if (workDateObj > today) {
+      showToast('未来の日付では提出できません', 'error')
+      return
+    }
+    const daysSince = Math.floor((Date.now() - workDateObj.getTime()) / 86400000)
+    if (daysSince > 30) {
+      const confirmed = confirm(`${daysSince}日前の記録です。本当に提出しますか？`)
+      if (!confirmed) return
+    }
+
+    // 3. 加工内容のチェック
     if (items.length === 0) {
       showToast('加工内容を入力してください', 'error')
       return
     }
 
-    // 3. 同じ作業者・同じ日の重複チェック
+    // 4. 同じ作業者・同じ日の重複チェック
     const duplicate = records.find(
       (r) => r.worker_name === loggedInWorker.name && r.date === workDate
     )

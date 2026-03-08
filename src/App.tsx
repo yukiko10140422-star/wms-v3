@@ -51,6 +51,17 @@ export default function App() {
     return () => unsubscribeRealtime()
   }, [fetchAll, subscribeRealtime, unsubscribeRealtime, restoreWorkerSession])
 
+  // タブ復帰時にデータを再取得（放置後の古いデータ防止）
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchAll()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [fetchAll])
+
   const handleNavigate = (page: string) => {
     setCurrentPage(page)
   }
