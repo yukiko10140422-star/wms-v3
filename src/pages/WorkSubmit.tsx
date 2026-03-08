@@ -1,4 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { AlertTriangle } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import WorkerPicker from '../components/work/WorkerPicker'
 import ProcessList from '../components/work/ProcessList'
@@ -43,6 +45,8 @@ function clearAllDrafts() {
 
 export default function WorkSubmit() {
   const workers = useStore((s) => s.workers)
+  const processes = useStore((s) => s.processes)
+  const records = useStore((s) => s.records)
   const settings = useStore((s) => s.settings)
   const addRecord = useStore((s) => s.addRecord)
   const showToast = useStore((s) => s.showToast)
@@ -64,6 +68,33 @@ export default function WorkSubmit() {
   } | null>(null)
   const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'done'>('idle')
   const [resetSignal, setResetSignal] = useState(0)
+
+  // マスタデータ変更検知用
+  const [masterChanged, setMasterChanged] = useState(false)
+  const prevProcessesRef = useRef<string>('')
+  const prevWorkersRef = useRef<string>('')
+  const hasInput = items.length > 0 || selectedWorker !== null
+
+  // 工程・作業者のマスタ変更を検知
+  useEffect(() => {
+    const processesKey = processes.map((p) => `${p.id}:${p.price}:${p.name}`).join(',')
+    const workersKey = workers.map((w) => w.id).join(',')
+
+    if (prevProcessesRef.current && prevProcessesRef.current !== processesKey && hasInput) {
+      setMasterChanged(true)
+    }
+    if (prevWorkersRef.current && prevWorkersRef.current !== workersKey && hasInput) {
+      setMasterChanged(true)
+      // 選択中の作業者が削除された場合
+      if (selectedWorker && !workers.some((w) => w.id === selectedWorker.id)) {
+        setSelectedWorker(null)
+        showToast('選択していた作業者が削除されました', 'error')
+      }
+    }
+
+    prevProcessesRef.current = processesKey
+    prevWorkersRef.current = workersKey
+  }, [processes, workers, hasInput, selectedWorker, showToast])
 
   // 下書きから作業者を復元（workers読み込み後）
   useEffect(() => {
@@ -111,22 +142,71 @@ export default function WorkSubmit() {
     [showToast]
   )
 
+  // 提出時に最新単価で再計算する関数
+  const recalculateWithLatestPrices = (currentItems: WorkItem[]): { items: WorkItem[]; baseTotal: number } => {
+    const recalculated: WorkItem[] = []
+    let newBaseTotal = 0
+
+    for (const item of currentItems) {
+      if (item.isHourly) {
+        recalculated.push(item)
+        newBaseTotal += item.sub
+        continue
+      }
+      // 最新の工程データから単価を取得
+      const latestProcess = processes.find((p) => p.name === item.name)
+      const latestPrice = latestProcess ? latestProcess.price : item.price
+      const sub = latestPrice * item.qty
+      recalculated.push({ ...item, price: latestPrice, sub })
+      newBaseTotal += sub
+    }
+
+    return { items: recalculated, baseTotal: newBaseTotal }
+  }
+
   const bonusAmt = bonusOn ? Math.round(baseTotal * (bonusRate / 100)) : 0
   const total = baseTotal + bonusAmt
 
   const handleSubmit = async () => {
+    // 1. 作業者の選択チェック
     if (!selectedWorker) {
       showToast('作業者を選択してください', 'error')
       return
     }
+
+    // 2. 作業者がまだ存在するかチェック
+    if (!workers.some((w) => w.id === selectedWorker.id)) {
+      showToast('この作業者は削除されたため提出できません', 'error')
+      setSelectedWorker(null)
+      return
+    }
+
+    // 3. 加工内容のチェック
     if (items.length === 0) {
       showToast('加工内容を入力してください', 'error')
       return
     }
 
+    // 4. 同じ作業者・同じ日の重複チェック
+    const duplicate = records.find(
+      (r) => r.worker_name === selectedWorker.name && r.date === workDate
+    )
+    if (duplicate) {
+      const confirmed = confirm(
+        `${selectedWorker.name}さんの ${workDate} の記録はすでに存在します。\n重複して提出しますか？`
+      )
+      if (!confirmed) return
+    }
+
     setSubmitState('submitting')
 
     try {
+      // 5. 最新単価で再計算
+      const recalc = recalculateWithLatestPrices(items)
+      const finalBaseTotal = recalc.baseTotal
+      const finalBonusAmt = bonusOn ? Math.round(finalBaseTotal * (bonusRate / 100)) : 0
+      const finalTotal = finalBaseTotal + finalBonusAmt
+
       await addRecord({
         date: workDate,
         worker_name: selectedWorker.name,
@@ -134,11 +214,11 @@ export default function WorkSubmit() {
         remarks,
         avatar: selectedWorker.avatar || '',
         bonus_on: bonusOn,
-        bonus_amt: bonusAmt,
+        bonus_amt: finalBonusAmt,
         bonus_rate: bonusRate,
-        items,
-        base_total: baseTotal,
-        total,
+        items: recalc.items,
+        base_total: finalBaseTotal,
+        total: finalTotal,
         hours: timerData?.hours ?? 0,
         timer_log: timerData?.timer_log ?? [],
         timer_work_ms: timerData?.timer_work_ms ?? 0,
@@ -146,6 +226,7 @@ export default function WorkSubmit() {
       })
 
       setSubmitState('done')
+      setMasterChanged(false)
 
       // Reset form after brief delay
       setTimeout(() => {
@@ -181,6 +262,34 @@ export default function WorkSubmit() {
         <h2 className="text-xl font-black">作業入力</h2>
         <p className="text-sm text-muted mt-0.5">作業内容を入力して提出します</p>
       </div>
+
+      {/* Master Data Change Banner */}
+      <AnimatePresence>
+        {masterChanged && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="flex items-start gap-3 bg-yellow-light border border-yellow/40 rounded-xl p-3">
+              <AlertTriangle className="w-5 h-5 text-yellow flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-bold text-ink">設定が変更されました</p>
+                <p className="text-xs text-muted mt-0.5">
+                  管理者が単価や作業者を変更しました。提出時に最新の単価で自動的に再計算されます。
+                </p>
+              </div>
+              <button
+                onClick={() => setMasterChanged(false)}
+                className="text-xs text-muted hover:text-ink cursor-pointer flex-shrink-0"
+              >
+                閉じる
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Work Date */}
       <div className="space-y-1.5">
