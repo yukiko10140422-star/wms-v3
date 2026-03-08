@@ -458,10 +458,10 @@ export default function WorkSubmit() {
         size="lg"
         className="w-full"
         loading={submitState === 'submitting'}
-        disabled={submitState === 'done'}
+        disabled={submitState === 'done' || !selectedWorker}
         onClick={handleSubmit}
       >
-        {buttonText}
+        {!selectedWorker ? '作業者を選択してください' : buttonText}
       </Button>
     </div>
   )
