@@ -31,7 +31,7 @@ interface StoreState {
   unsubscribeRealtime: () => void
   unlockAdmin: (password: string) => boolean
 
-  addRecord: (record: Omit<WorkRecord, 'id' | 'created_at'>) => Promise<void>
+  addRecord: (record: Omit<WorkRecord, 'id' | 'created_at'>) => Promise<number | null>
   updateRecordStatus: (id: number, status: WorkRecord['status']) => Promise<void>
   deleteRecord: (id: number) => Promise<void>
 
@@ -250,10 +250,11 @@ export const useStore = create<StoreState>((set, get) => ({
     const { error } = await supabase.from('records').insert(newRecord)
     if (error) {
       get().showToast('記録の追加に失敗しました', 'error')
-      return
+      return null
     }
     set((s) => ({ records: [newRecord as WorkRecord, ...s.records] }))
     get().showToast('記録を追加しました', 'success')
+    return newRecord.id
   },
 
   updateRecordStatus: async (id, status) => {

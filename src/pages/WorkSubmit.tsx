@@ -64,6 +64,7 @@ export default function WorkSubmit() {
   const records = useStore((s) => s.records)
   const settings = useStore((s) => s.settings)
   const addRecord = useStore((s) => s.addRecord)
+  const deleteRecord = useStore((s) => s.deleteRecord)
   const showToast = useStore((s) => s.showToast)
   const saveDraftToServer = useStore((s) => s.saveDraft)
   const deleteDraftFromServer = useStore((s) => s.deleteDraft)
@@ -87,6 +88,7 @@ export default function WorkSubmit() {
   const [resetSignal, setResetSignal] = useState(0)
   const [importData, setImportData] = useState<{ quantities: Record<string, number>; hourlyHours: number } | null>(null)
   const [submittedSummary, setSubmittedSummary] = useState<{
+    recordId: number
     workerName: string
     date: string
     items: WorkItem[]
@@ -299,7 +301,7 @@ export default function WorkSubmit() {
       const finalBonusAmt = bonusOn ? Math.round(finalBaseTotal * (bonusRate / 100)) : 0
       const finalTotal = finalBaseTotal + finalBonusAmt
 
-      await addRecord({
+      const recordId = await addRecord({
         date: workDate,
         worker_name: selectedWorker.name,
         address,
@@ -316,6 +318,7 @@ export default function WorkSubmit() {
         timer_work_ms: timerData?.timer_work_ms ?? 0,
         status: 'pending',
       })
+      if (!recordId) return
 
       setSubmitState('done')
       setMasterChanged(false)
@@ -345,6 +348,7 @@ export default function WorkSubmit() {
 
       // 提出完了サマリーを表示
       setSubmittedSummary({
+        recordId,
         workerName: selectedWorker.name,
         date: workDate,
         items: recalc.items,
@@ -358,7 +362,7 @@ export default function WorkSubmit() {
     }
   }
 
-  const handleDismissSummary = useCallback(() => {
+  const resetForm = useCallback(() => {
     setSubmittedSummary(null)
     setSelectedWorker(null)
     setWorkDate(new Date().toISOString().split('T')[0])
@@ -373,6 +377,18 @@ export default function WorkSubmit() {
     clearAllDrafts()
     deleteDraftFromServer(deviceId)
   }, [deleteDraftFromServer])
+
+  const handleDismissSummary = resetForm
+
+  const handleUndoSubmit = useCallback(async () => {
+    if (!submittedSummary?.recordId) return
+    const confirmed = confirm('この提出を取り消しますか？')
+    if (!confirmed) return
+    await deleteRecord(submittedSummary.recordId)
+    setSubmittedSummary(null)
+    setSubmitState('idle')
+    showToast('提出を取り消しました', 'info')
+  }, [submittedSummary, deleteRecord, showToast])
 
   const hasLastSubmit = (() => {
     try { return !!localStorage.getItem(LAST_SUBMIT_KEY) } catch { return false }
@@ -619,6 +635,12 @@ export default function WorkSubmit() {
               >
                 確認しました
               </Button>
+              <button
+                onClick={handleUndoSubmit}
+                className="w-full text-center text-xs text-muted hover:text-red cursor-pointer py-2 transition-colors"
+              >
+                この提出を取り消す
+              </button>
             </motion.div>
           </motion.div>
         )}
