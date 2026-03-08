@@ -1,10 +1,11 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useStore } from '../store/useStore'
 import MonthSummary from '../components/history/MonthSummary'
+import WorkerChart from '../components/history/WorkerChart'
 import RecordList from '../components/history/RecordList'
 import PaymentDoc from '../components/print/PaymentDoc'
 import Button from '../components/ui/Button'
-import { Printer, Download } from 'lucide-react'
+import { Printer, Download, ArrowUpDown } from 'lucide-react'
 
 export default function History() {
   const {
@@ -19,6 +20,8 @@ export default function History() {
 
   const [filterMonth, setFilterMonth] = useState('')
   const [filterWorker, setFilterWorker] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'total-desc' | 'total-asc'>('date-desc')
   const [showPrint, setShowPrint] = useState(false)
 
   const workerNames = useMemo(
@@ -30,8 +33,19 @@ export default function History() {
     let list = records
     if (filterMonth) list = list.filter((r) => r.date.startsWith(filterMonth))
     if (filterWorker) list = list.filter((r) => r.worker_name === filterWorker)
+    if (filterStatus) list = list.filter((r) => r.status === filterStatus)
+
+    list = [...list].sort((a, b) => {
+      switch (sortBy) {
+        case 'date-asc': return a.date.localeCompare(b.date)
+        case 'total-desc': return b.total - a.total
+        case 'total-asc': return a.total - b.total
+        default: return b.date.localeCompare(a.date)
+      }
+    })
+
     return list
-  }, [records, filterMonth, filterWorker])
+  }, [records, filterMonth, filterWorker, filterStatus, sortBy])
 
   const handleApprove = useCallback(
     async (id: number) => {
@@ -144,8 +158,8 @@ export default function History() {
           />
         </div>
 
-        <div className="flex flex-col gap-1 min-w-[145px]">
-          <label className="text-xs font-bold text-muted">名前で絞り込み</label>
+        <div className="flex flex-col gap-1 min-w-[120px]">
+          <label className="text-xs font-bold text-muted">名前</label>
           <select
             value={filterWorker}
             onChange={(e) => setFilterWorker(e.target.value)}
@@ -160,6 +174,34 @@ export default function History() {
           </select>
         </div>
 
+        <div className="flex flex-col gap-1 min-w-[100px]">
+          <label className="text-xs font-bold text-muted">ステータス</label>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-2 border border-border rounded-lg text-sm focus:border-mango outline-none"
+          >
+            <option value="">すべて</option>
+            <option value="pending">保留</option>
+            <option value="approved">承認</option>
+            <option value="rejected">却下</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1 min-w-[120px]">
+          <label className="text-xs font-bold text-muted">並び替え</label>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="px-3 py-2 border border-border rounded-lg text-sm focus:border-mango outline-none"
+          >
+            <option value="date-desc">日付（新しい順）</option>
+            <option value="date-asc">日付（古い順）</option>
+            <option value="total-desc">金額（高い順）</option>
+            <option value="total-asc">金額（低い順）</option>
+          </select>
+        </div>
+
         <div className="flex gap-2 mt-auto">
           <Button variant="primary" size="md" onClick={handleOpenPrintPreview}>
             <Printer className="w-4 h-4" />
@@ -171,6 +213,11 @@ export default function History() {
           </Button>
         </div>
       </div>
+
+      {/* Worker Chart */}
+      {filteredRecords.length > 0 && (
+        <WorkerChart records={filteredRecords} filterMonth={filterMonth} />
+      )}
 
       {/* Month Summary */}
       {filterMonth && filteredRecords.length > 0 && (
