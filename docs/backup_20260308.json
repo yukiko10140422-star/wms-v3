@@ -1,0 +1,25 @@
+{
+  "exported_at": "2026-03-08",
+  "workers": [
+    {"id":"w1772946377491","name":"宮崎 友祈子","address":"藤沢市辻堂6-13-14","avatar":"","bank_name":"","bank_branch":"","bank_type":"普通","bank_number":"","bank_holder":""},
+    {"id":"w1772946755161","name":"永田　映利佳","address":"神奈川県藤沢市鵠沼松が岡2-5-3-101","avatar":"","bank_name":"楽天銀行","bank_branch":"リード支店","bank_type":"普通","bank_number":"1247661","bank_holder":"ナガタ　エリカ"}
+  ],
+  "processes": [
+    {"id":"box","name":"箱に入れる","price":50,"sort_order":0},
+    {"id":"waterproof","name":"防水袋 / プチプチ","price":10,"sort_order":1},
+    {"id":"roll","name":"プチプチロール","price":30,"sort_order":2},
+    {"id":"boxwork","name":"箱加工（通常）","price":100,"sort_order":4},
+    {"id":"boxlarge","name":"箱加工（特大）","price":200,"sort_order":5},
+    {"id":"set","name":"セット梱包","price":50,"sort_order":6},
+    {"id":"danboru","name":"巻段ボール","price":50,"sort_order":7},
+    {"id":"label","name":"発送伝票打ち込み","price":50,"sort_order":8},
+    {"id":"c1772958822368","name":"袋","price":30,"sort_order":9},
+    {"id":"c1772958882247","name":"袋特大","price":100,"sort_order":10},
+    {"id":"c1772958910205","name":"圧縮","price":50,"sort_order":10}
+  ],
+  "settings": [
+    {"id":1,"company":"WMS","manager":"","address":"","bonus_rate":10,"bank_name":"","bank_branch":"","bank_type":"普通","bank_number":"","bank_holder":"","admin_pw":"1234"}
+  ],
+  "records": [],
+  "shifts": []
+}

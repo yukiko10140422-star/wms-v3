@@ -30,7 +30,7 @@ function loadDraft(): FormDraft | null {
   }
 }
 
-function saveDraft(draft: FormDraft) {
+function saveLocalDraft(draft: FormDraft) {
   try {
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
   } catch { /* ignore */ }
@@ -43,6 +43,19 @@ function clearAllDrafts() {
   localStorage.removeItem('wms-timer-draft')
 }
 
+// 端末識別子（localStorage に永続化）
+function getDeviceId(): string {
+  const key = 'wms-device-id'
+  let id = localStorage.getItem(key)
+  if (!id) {
+    id = 'd' + Date.now() + Math.random().toString(36).slice(2, 6)
+    localStorage.setItem(key, id)
+  }
+  return id
+}
+
+const deviceId = getDeviceId()
+
 export default function WorkSubmit() {
   const workers = useStore((s) => s.workers)
   const processes = useStore((s) => s.processes)
@@ -50,6 +63,8 @@ export default function WorkSubmit() {
   const settings = useStore((s) => s.settings)
   const addRecord = useStore((s) => s.addRecord)
   const showToast = useStore((s) => s.showToast)
+  const saveDraftToServer = useStore((s) => s.saveDraft)
+  const deleteDraftFromServer = useStore((s) => s.deleteDraft)
 
   const draft = useRef(loadDraft()).current
 
@@ -110,7 +125,7 @@ export default function WorkSubmit() {
 
   // フォーム変更時にlocalStorageへ保存
   useEffect(() => {
-    saveDraft({
+    saveLocalDraft({
       workerId: selectedWorker?.id ?? null,
       workDate,
       address,
@@ -119,6 +134,41 @@ export default function WorkSubmit() {
       bonusRate,
     })
   }, [selectedWorker, workDate, address, remarks, bonusOn, bonusRate])
+
+  // Supabase下書き同期（デバウンス2秒）
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
+    syncTimerRef.current = setTimeout(() => {
+      // 数量情報をlocalStorageから取得
+      let quantities: Record<string, number> = {}
+      let hourlyHours = 0
+      try {
+        const qRaw = localStorage.getItem('wms-quantities-draft')
+        if (qRaw) quantities = JSON.parse(qRaw)
+        const hRaw = localStorage.getItem('wms-hourly-draft')
+        if (hRaw) hourlyHours = parseFloat(hRaw) || 0
+      } catch { /* ignore */ }
+
+      saveDraftToServer({
+        id: deviceId,
+        worker_id: selectedWorker?.id ?? null,
+        worker_name: selectedWorker?.name ?? '',
+        work_date: workDate,
+        address,
+        remarks,
+        bonus_on: bonusOn,
+        bonus_rate: bonusRate,
+        quantities,
+        hourly_hours: hourlyHours,
+        base_total: baseTotal,
+        device_id: deviceId,
+      })
+    }, 2000)
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
+    }
+  }, [selectedWorker, workDate, address, remarks, bonusOn, bonusRate, baseTotal, items, saveDraftToServer])
 
   const handleWorkerSelect = useCallback((worker: Worker) => {
     setSelectedWorker(worker)
@@ -241,6 +291,7 @@ export default function WorkSubmit() {
         setSubmitState('idle')
         setResetSignal((s) => s + 1)
         clearAllDrafts()
+        deleteDraftFromServer(deviceId)
       }, 1500)
     } catch {
       setSubmitState('idle')

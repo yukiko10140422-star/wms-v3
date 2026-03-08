@@ -55,6 +55,8 @@
 | `src/components/ui/Toast.tsx` | DEPT-3 |
 | `src/components/ui/Counter.tsx` | DEPT-3 |
 | `src/components/ui/Badge.tsx` | DEPT-3 |
+| `src/components/ui/UpdateNotice.tsx` | DEPT-3 |
+| `src/components/ui/UsageGuide.tsx` | DEPT-3 |
 
 ## src/components/layout/
 

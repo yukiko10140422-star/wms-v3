@@ -71,3 +71,19 @@ export type Settings = {
   bank_holder: string
   admin_pw: string
 }
+
+export type Draft = {
+  id: string
+  worker_id: string | null
+  worker_name: string
+  work_date: string | null
+  address: string
+  remarks: string
+  bonus_on: boolean
+  bonus_rate: number
+  quantities: Record<string, number>
+  hourly_hours: number
+  base_total: number
+  device_id: string
+  updated_at: string
+}

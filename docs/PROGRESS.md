@@ -31,11 +31,11 @@
 
 | タスク                         | ステータス | 担当Agent | 備考  |
 | --------------------------- | ----- | ------- | --- |
-| 型定義（types.ts）               | 完了    | DEPT-2  | 全型定義済み |
+| 型定義（types.ts）               | 完了    | DEPT-2  | 全型定義済み + Draft型追加 |
 | Supabaseクライアント（supabase.ts） | 完了    | DEPT-2  | VITE_環境変数使用 |
-| Zustandストア（useStore.ts）     | 完了    | DEPT-2  | 全CRUD実装済み |
+| Zustandストア（useStore.ts）     | 完了    | DEPT-2  | 全CRUD + drafts同期 |
 | 同期フック（useSync.ts）           | 完了    | DEPT-2  | |
-| タイマーフック（useTimer.ts）        | 完了    | DEPT-2  | useRef+setInterval |
+| タイマーフック（useTimer.ts）        | 完了    | DEPT-2  | localStorage永続化対応 |
 | Supabase CRUD テスト           | 完了    | main    | tsc+vite build通過 |
 
 
@@ -44,16 +44,18 @@
 
 | タスク                            | ステータス | 担当Agent | 備考  |
 | ------------------------------ | ----- | ------- | --- |
-| index.css（Tailwindベース + CSS変数） | 完了    | DEPT-3  | @theme定義済み |
+| index.css（Tailwindベース + CSS変数） | 完了    | DEPT-3  | 視認性向上版 |
 | Button コンポーネント                 | 完了    | DEPT-3  | 5バリアント+loading |
 | Modal コンポーネント                  | 完了    | DEPT-3  | AnimatePresence |
 | Toast コンポーネント                  | 完了    | DEPT-3  | 2.5秒自動消去 |
-| Counter コンポーネント（プッシュ式）         | 完了    | DEPT-3  | 長押し連続カウント対応 |
+| Counter コンポーネント（プッシュ式）         | 完了    | DEPT-3  | 長押し+直接入力対応 |
 | Badge コンポーネント                  | 完了    | DEPT-3  | 3ステータス |
-| Sidebar コンポーネント                | 完了    | DEPT-3  | マンゴーグラデーション |
-| BottomNav コンポーネント              | 完了    | DEPT-3  | 管理者メニューシート付き |
+| Sidebar コンポーネント                | 完了    | DEPT-3  | ガイドリンク追加 |
+| BottomNav コンポーネント              | 完了    | DEPT-3  | ガイドボタン追加 |
 | SyncBar コンポーネント                | 完了    | DEPT-3  | ok時フェードアウト |
 | AdminGuard コンポーネント             | 完了    | DEPT-3  | shakeアニメーション |
+| UpdateNotice コンポーネント           | 完了    | main    | ビルド毎に自動通知 |
+| UsageGuide コンポーネント             | 完了    | main    | 8セクションの使い方ガイド |
 
 
 ---
@@ -65,8 +67,8 @@
 
 | タスク                       | ステータス | 担当Agent | 備考  |
 | ------------------------- | ----- | ------- | --- |
-| ProcessItem（個別梱包 + カウンター） | 完了    | DEPT-4  | DnD+Counter |
-| ProcessList（ドラッグ&ドロップ）    | 完了    | DEPT-4  | @dnd-kit |
+| ProcessItem（個別梱包 + カウンター） | 完了    | DEPT-4  | モバイル2行レイアウト対応 |
+| ProcessList（ドラッグ&ドロップ）    | 完了    | DEPT-4  | localStorage永続化 |
 | WorkerPicker（作業者選択）       | 完了    | DEPT-4  | チップUI |
 | Timer（タイマーUI）             | 完了    | DEPT-4  | ダークカード |
 | BonusToggle（ボーナス切替）       | 完了    | DEPT-4  | アニメトグル |
@@ -108,8 +110,22 @@
 | 全ページ結合テスト        | 完了    | main    | tsc+build+dev OK |
 | モバイルレスポンシブ確認     | 待機    | -       | ブラウザで確認必要 |
 | Supabase E2Eテスト  | 待機    | -       | ブラウザで確認必要 |
-| フォーム下書きlocalStorage永続化 | 完了 | main | タイマー・数量・フォーム全体 |
-| 色彩視認性向上+モバイルレイアウト改善 | 完了 | main | Counter直接入力対応 |
+
+---
+
+## Phase 5（運用改善）
+
+| タスク | ステータス | 担当Agent | 備考 |
+| --- | --- | --- | --- |
+| 色彩視認性向上 | 完了 | main | コントラスト改善、マンゴー雰囲気維持 |
+| モバイル梱包レイアウト改善 | 完了 | main | 2行レイアウト（sm未満） |
+| Counter直接入力対応 | 完了 | main | タップで数値入力モード |
+| localStorage下書き永続化 | 完了 | main | タイマー・数量・フォーム |
+| アップデート通知 | 完了 | main | ビルド毎に自動表示 |
+| 使い方ガイド | 完了 | main | BottomNav+Sidebarからアクセス |
+| データ整合性対策 | 完了 | main | 最新単価再計算・重複警告・削除ブロック |
+| Supabase下書きリアルタイム同期 | 完了 | main | draftsテーブル+Realtime |
+| draftsテーブル作成 | **要実行** | 管理者 | `docs/migration_drafts.sql` を Supabase SQL Editor で実行 |
 
 
 ---
@@ -117,10 +133,7 @@
 ## ブロッカー・メモ
 
 
-
-
-| 日時  | 部署  | 内容  | 解決状態 |
+| 日時 | 部署 | 内容 | 解決状態 |
 | --- | --- | --- | ---- |
-| -   | -   | -   | -    |
-
+| 2026-03-08 | main | draftsテーブル未作成。`docs/migration_drafts.sql`をSupabase SQL Editorで実行が必要 | 未解決 |
 

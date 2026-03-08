@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import type { Worker, Process, WorkRecord, Shift, Settings } from '../lib/types'
+import type { Worker, Process, WorkRecord, Shift, Settings, Draft } from '../lib/types'
 
 type SyncStatus = 'idle' | 'loading' | 'ok' | 'error'
 type ToastType = 'success' | 'error' | 'info'
@@ -17,11 +17,13 @@ interface StoreState {
   records: WorkRecord[]
   shifts: Shift[]
   settings: Settings | null
+  drafts: Draft[]
   syncStatus: SyncStatus
   isOnline: boolean
   adminUnlocked: boolean
   toast: Toast | null
   _realtimeChannel: RealtimeChannel | null
+  _draftsAvailable: boolean
 
   fetchAll: () => Promise<void>
   subscribeRealtime: () => void
@@ -47,6 +49,11 @@ interface StoreState {
 
   updateSettings: (data: Partial<Settings>) => Promise<void>
   showToast: (message: string, type: ToastType) => void
+
+  // Drafts
+  saveDraft: (draft: Omit<Draft, 'updated_at'>) => Promise<void>
+  deleteDraft: (id: string) => Promise<void>
+  fetchDrafts: () => Promise<void>
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -55,11 +62,13 @@ export const useStore = create<StoreState>((set, get) => ({
   records: [],
   shifts: [],
   settings: null,
+  drafts: [],
   syncStatus: 'idle',
   isOnline: navigator.onLine,
   adminUnlocked: false,
   toast: null,
   _realtimeChannel: null,
+  _draftsAvailable: false,
 
   subscribeRealtime: () => {
     // 既存チャンネルがあれば解除
@@ -146,6 +155,25 @@ export const useStore = create<StoreState>((set, get) => ({
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'settings' }, (payload) => {
         set({ settings: payload.new as Settings })
       })
+      // Drafts
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drafts' }, (payload) => {
+        if (!get()._draftsAvailable) return
+        if (payload.eventType === 'INSERT') {
+          const newDraft = payload.new as Draft
+          set((s) => {
+            if (s.drafts.some((d) => d.id === newDraft.id)) return s
+            return { drafts: [...s.drafts, newDraft] }
+          })
+        } else if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as Draft
+          set((s) => ({
+            drafts: s.drafts.map((d) => (d.id === updated.id ? updated : d)),
+          }))
+        } else if (payload.eventType === 'DELETE') {
+          const deletedId = (payload.old as { id: string }).id
+          set((s) => ({ drafts: s.drafts.filter((d) => d.id !== deletedId) }))
+        }
+      })
       .subscribe()
 
     set({ _realtimeChannel: channel })
@@ -184,9 +212,20 @@ export const useStore = create<StoreState>((set, get) => ({
         settings: stRes.data as Settings,
         syncStatus: 'ok',
       })
+
+      // draftsテーブルの存在チェック（なくてもエラーにしない）
+      get().fetchDrafts()
     } catch {
       set({ syncStatus: 'error' })
     }
+  },
+
+  fetchDrafts: async () => {
+    const { data, error } = await supabase.from('drafts').select('*')
+    if (!error && data) {
+      set({ drafts: data as Draft[], _draftsAvailable: true })
+    }
+    // テーブルがなければ静かに無視（_draftsAvailable = false のまま）
   },
 
   unlockAdmin: (password: string) => {
@@ -359,6 +398,28 @@ export const useStore = create<StoreState>((set, get) => ({
       settings: s.settings ? { ...s.settings, ...data } : null,
     }))
     get().showToast('設定を更新しました', 'success')
+  },
+
+  // Drafts
+  saveDraft: async (draft) => {
+    if (!get()._draftsAvailable) return
+    const draftWithTimestamp = { ...draft, updated_at: new Date().toISOString() }
+    const { error } = await supabase.from('drafts').upsert(draftWithTimestamp)
+    if (!error) {
+      set((s) => ({
+        drafts: s.drafts.some((d) => d.id === draft.id)
+          ? s.drafts.map((d) => (d.id === draft.id ? draftWithTimestamp : d))
+          : [...s.drafts, draftWithTimestamp],
+      }))
+    }
+  },
+
+  deleteDraft: async (id) => {
+    if (!get()._draftsAvailable) return
+    const { error } = await supabase.from('drafts').delete().eq('id', id)
+    if (!error) {
+      set((s) => ({ drafts: s.drafts.filter((d) => d.id !== id) }))
+    }
   },
 
   // Toast

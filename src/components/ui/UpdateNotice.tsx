@@ -2,17 +2,28 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Sparkles } from 'lucide-react'
 
-const APP_VERSION = '2.1.0'
-const STORAGE_KEY = 'wms-last-seen-version'
+// ビルド時に自動的に更新される（Viteのdefine経由）
+const BUILD_ID = __BUILD_ID__
+const STORAGE_KEY = 'wms-last-seen-build'
 
 interface UpdateEntry {
   title: string
   items: string[]
 }
 
+// 新しいアップデートを一番上に追加していく
 const updates: UpdateEntry[] = [
   {
-    title: 'v2.1.0 — もっと使いやすくなりました',
+    title: 'v2.2 — リアルタイム共有 & 安全性アップ',
+    items: [
+      '入力中のデータを別の端末からも確認できるようになりました',
+      '他の人が単価や作業者を変更したとき、画面にお知らせが出るようになりました',
+      '同じ人・同じ日の作業を二重に提出しようとすると確認が出ます',
+      '提出するときに最新の単価で自動的に計算し直します',
+    ],
+  },
+  {
+    title: 'v2.1 — もっと使いやすくなりました',
     items: [
       '画面の文字や色が見やすくなりました',
       'スマホで梱包の項目名がつぶれなくなりました',
@@ -28,14 +39,14 @@ export default function UpdateNotice() {
 
   useEffect(() => {
     const lastSeen = localStorage.getItem(STORAGE_KEY)
-    if (lastSeen !== APP_VERSION) {
+    if (lastSeen !== BUILD_ID) {
       setOpen(true)
     }
   }, [])
 
   const handleClose = () => {
     setOpen(false)
-    localStorage.setItem(STORAGE_KEY, APP_VERSION)
+    localStorage.setItem(STORAGE_KEY, BUILD_ID)
   }
 
   return (
