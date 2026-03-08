@@ -144,8 +144,7 @@ export default function UsageGuide({ open, onClose }: UsageGuideProps) {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-          style={{ padding: 'env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0px env(safe-area-inset-left, 0px)' }}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center safe-top"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -157,8 +156,7 @@ export default function UsageGuide({ open, onClose }: UsageGuideProps) {
           />
 
           <motion.div
-            className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg sm:mx-4 max-h-[85vh] flex flex-col"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+            className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg sm:mx-4 max-h-[85vh] flex flex-col safe-bottom"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
