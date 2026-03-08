@@ -125,8 +125,22 @@
 | 使い方ガイド | 完了 | main | BottomNav+Sidebarからアクセス |
 | データ整合性対策 | 完了 | main | 最新単価再計算・重複警告・削除ブロック |
 | Supabase下書きリアルタイム同期 | 完了 | main | draftsテーブル+Realtime |
-| draftsテーブル作成 | **要実行** | 管理者 | `docs/migration_drafts.sql` を Supabase SQL Editor で実行 |
+| draftsテーブル作成 | 完了 | main | pg直接接続で作成済み |
 
+---
+
+## Phase 6（UX改善）
+
+| タスク | ステータス | 担当Agent | 備考 |
+| --- | --- | --- | --- |
+| フォーム順序最適化 | 完了 | main | 作業者→日付+住所(横並び)→加工内容 |
+| 提出完了確認モーダル | 完了 | main | 内訳表示+取り消し機能付き |
+| 前回と同じ内容で入力 | 完了 | main | localStorage保存→ワンタップ復元 |
+| 提出取り消し機能 | 完了 | main | 確認モーダル内で即取り消し |
+| 日次サマリーダッシュボード | 完了 | main | 提出件数・合計・未提出者表示 |
+| LiveDrafts UI改善 | 完了 | main | コピーボタン明確化 |
+| 機能リクエストシステム | 完了 | main | 送信(全員)+閲覧(メール認証) |
+| feature_requestsテーブル作成 | 完了 | main | pg直接接続で作成済み |
 
 ---
 
@@ -135,5 +149,5 @@
 
 | 日時 | 部署 | 内容 | 解決状態 |
 | --- | --- | --- | ---- |
-| 2026-03-08 | main | draftsテーブル未作成。`docs/migration_drafts.sql`をSupabase SQL Editorで実行が必要 | 未解決 |
+| 2026-03-08 | main | draftsテーブル未作成 | 解決済み（pg直接接続で作成） |
 

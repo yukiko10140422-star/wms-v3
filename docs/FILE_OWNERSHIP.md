@@ -101,6 +101,8 @@
 | `src/components/settings/WorkerManager.tsx` | DEPT-5 |
 | `src/components/settings/PriceManager.tsx` | DEPT-5 |
 | `src/components/settings/PasswordForm.tsx` | DEPT-5 |
+| `src/components/settings/FeatureRequestForm.tsx` | DEPT-5 |
+| `src/components/settings/FeatureRequestList.tsx` | DEPT-5 |
 
 ## src/components/print/
 
