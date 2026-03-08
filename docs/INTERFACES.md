@@ -13,6 +13,7 @@ type Worker = {
   name: string
   address: string
   avatar: string        // base64 or ""
+  pin: string | null    // 4桁PIN
   bank_name: string
   bank_branch: string
   bank_type: string     // "普通" | "当座"
@@ -49,6 +50,7 @@ type WorkRecord = {
   hours: number
   timer_log: TimerLogEntry[]
   timer_work_ms: number
+  photos: string[]
   status: 'pending' | 'approved' | 'rejected'
   created_at: string
 }
@@ -74,6 +76,8 @@ type Shift = {
   worker_name: string
   dates: string[]       // ["YYYY-MM-DD", ...]
   submitted_at: string
+  type: 'shift' | 'absence'
+  reason: string
   status: 'pending' | 'approved' | 'rejected'
 }
 ```
@@ -92,6 +96,37 @@ type Settings = {
   bank_number: string
   bank_holder: string
   admin_pw: string
+}
+```
+
+### Draft
+```typescript
+type Draft = {
+  id: string
+  worker_id: string | null
+  worker_name: string
+  work_date: string | null
+  address: string
+  remarks: string
+  bonus_on: boolean
+  bonus_rate: number
+  quantities: Record<string, number>
+  hourly_hours: number
+  base_total: number
+  device_id: string
+  updated_at: string
+}
+```
+
+### FeatureRequest
+```typescript
+type FeatureRequest = {
+  id: number
+  author_name: string
+  content: string
+  status: 'new' | 'reviewed' | 'planned' | 'done' | 'declined'
+  admin_note: string
+  created_at: string
 }
 ```
 
@@ -115,7 +150,14 @@ type Store = {
 
   // 認証
   adminUnlocked: boolean
-  unlockAdmin: (password: string) => boolean
+  unlockAdmin: (pin: string) => boolean
+
+  // 作業者認証
+  loggedInWorker: Worker | null
+  loginWorker: (workerId: string, pin: string) => boolean
+  logoutWorker: () => void
+  restoreWorkerSession: () => void
+  updateWorkerPin: (workerId: string, newPin: string) => Promise<boolean>
 
   // データ操作
   fetchAll: () => Promise<void>
@@ -135,8 +177,26 @@ type Store = {
   addShift: (shift: Omit<Shift, 'id' | 'submitted_at'>) => Promise<void>
   updateShiftStatus: (id: number, status: Shift['status']) => Promise<void>
   deleteShift: (id: number) => Promise<void>
+  updateShift: (id: number, data: Partial<Shift>) => Promise<void>
 
   updateSettings: (data: Partial<Settings>) => Promise<void>
+
+  // ドラフト（リアルタイム同期）
+  drafts: Draft[]
+  saveDraft: (draft: Omit<Draft, 'updated_at'>) => Promise<void>
+  deleteDraft: (id: string) => Promise<void>
+  fetchDrafts: () => Promise<void>
+
+  // 機能リクエスト
+  addFeatureRequest: (req: { author_name: string; content: string }) => Promise<void>
+  fetchFeatureRequests: () => Promise<void>
+  updateFeatureRequest: (id: number, data: Partial<FeatureRequest>) => Promise<void>
+
+  // リアルタイム
+  subscribeRealtime: () => void
+  unsubscribeRealtime: () => void
+
+  showToast: (message: string, type: 'success' | 'error' | 'info') => void
 }
 ```
 
@@ -198,3 +258,4 @@ type BadgeProps = {
 | 日時 | 部署 | 変更内容 |
 |------|------|---------|
 | 初版 | 管理者 | 全インターフェース定義 |
+| Phase 8-11 | main | Worker.pin追加、Shift.type/reason追加、WorkRecord.photos追加、Draft/FeatureRequest型追加、Store認証メソッド追加、PIN認証に変更 |

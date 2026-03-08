@@ -47,6 +47,7 @@
 - `src/components/layout/BottomNav.tsx`
 - `src/components/layout/SyncBar.tsx`
 - `src/components/layout/AdminGuard.tsx`
+- `src/pages/Login.tsx` — ログインページ（PIN認証）
 
 **依存:** DEPT-1完了後に開始（DEPT-2と並行可能）
 **制約:** Supabase直接呼び出しはしない。propsとコールバックで受け取る。
@@ -78,6 +79,9 @@
 - `src/pages/History.tsx` — 履歴・明細書ページ
 - `src/pages/ShiftAdmin.tsx` — シフト管理ページ
 - `src/pages/Settings.tsx` — 設定ページ
+- `src/pages/MyShifts.tsx` — マイシフトページ
+- `src/pages/MySalary.tsx` — 給料明細ページ
+- `src/pages/MySettings.tsx` — マイ設定ページ
 - `src/components/shift/Calendar.tsx`
 - `src/components/shift/ShiftList.tsx`
 - `src/components/history/RecordList.tsx`
@@ -86,7 +90,7 @@
 - `src/components/settings/CompanyForm.tsx`
 - `src/components/settings/WorkerManager.tsx`
 - `src/components/settings/PriceManager.tsx`
-- `src/components/settings/PasswordForm.tsx`
+- `src/components/settings/PasswordForm.tsx`（管理者PIN変更）
 - `src/components/print/PaymentDoc.tsx`
 
 **依存:** DEPT-2（型定義・ストア）、DEPT-3（UIコンポーネント）完了後

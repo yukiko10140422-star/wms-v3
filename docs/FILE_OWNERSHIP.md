@@ -139,6 +139,10 @@
 | `src/pages/History.tsx` | DEPT-5 |
 | `src/pages/ShiftAdmin.tsx` | DEPT-5 |
 | `src/pages/Settings.tsx` | DEPT-5 |
+| `src/pages/Login.tsx` | DEPT-3 |
+| `src/pages/MyShifts.tsx` | DEPT-5 |
+| `src/pages/MySalary.tsx` | DEPT-5 |
+| `src/pages/MySettings.tsx` | DEPT-5 |
 
 ## docs/
 

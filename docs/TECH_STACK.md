@@ -33,7 +33,7 @@
 |------|------|
 | **ホスティング** | Netlify（現状維持、Viteビルド出力をデプロイ） |
 | **DB** | Supabase PostgreSQL（移行済み） |
-| **認証** | 現状のパスワード方式を維持（将来Supabase Authに移行可） |
+| **認証** | 4桁PIN認証方式（将来Supabase Authに移行可） |
 
 ---
 
@@ -78,44 +78,58 @@ wms-v3/
     │   └── useStore.ts          # Zustand グローバルストア
     ├── hooks/
     │   ├── useTimer.ts          # タイマーロジック
-    │   └── useSync.ts           # 同期ステータス管理
+    │   ├── useSync.ts           # 同期ステータス管理
+    │   ├── useOfflineQueue.ts  # オフラインキュー
+    │   └── useTheme.ts         # テーマ管理
     ├── components/
     │   ├── layout/
     │   │   ├── Sidebar.tsx      # サイドバーナビゲーション
     │   │   ├── BottomNav.tsx    # モバイルボトムナビ
     │   │   ├── SyncBar.tsx      # 同期ステータスバー
-    │   │   └── AdminGuard.tsx   # パスワード保護
+    │   │   └── AdminGuard.tsx   # 管理者PIN認証
     │   ├── work/
     │   │   ├── ProcessList.tsx  # ★ ドラッグ可能な梱包リスト
     │   │   ├── ProcessItem.tsx  # ★ 個別梱包アイテム（プッシュカウンター）
     │   │   ├── WorkerPicker.tsx # 作業者選択
     │   │   ├── Timer.tsx        # 作業タイマー
     │   │   ├── BonusToggle.tsx  # ボーナス切替
-    │   │   └── TotalPanel.tsx   # 合計表示パネル
+    │   │   ├── TotalPanel.tsx   # 合計表示パネル
+    │   │   ├── PhotoAttach.tsx # 写真添付
+    │   │   └── LiveDrafts.tsx  # リアルタイム下書き
     │   ├── shift/
     │   │   ├── Calendar.tsx     # シフトカレンダー
     │   │   └── ShiftList.tsx    # シフト一覧
     │   ├── history/
     │   │   ├── RecordList.tsx   # 作業記録一覧
     │   │   ├── RecordCard.tsx   # 個別記録カード
-    │   │   └── MonthSummary.tsx # 月次サマリー
+    │   │   ├── MonthSummary.tsx # 月次サマリー
+    │   │   └── WorkerChart.tsx # 作業者別実績グラフ
     │   ├── settings/
     │   │   ├── CompanyForm.tsx  # 会社情報フォーム
     │   │   ├── WorkerManager.tsx # 作業者管理
     │   │   ├── PriceManager.tsx # 単価管理
-    │   │   └── PasswordForm.tsx # パスワード変更
+    │   │   ├── PasswordForm.tsx # 管理者PIN変更
+    │   │   ├── FeatureRequestForm.tsx
+    │   │   └── FeatureRequestList.tsx
     │   ├── print/
     │   │   └── PaymentDoc.tsx   # 支払明細書
     │   └── ui/
     │       ├── Button.tsx
     │       ├── Modal.tsx
-    │       └── Toast.tsx
+    │       ├── Toast.tsx
+    │       ├── Badge.tsx
+    │       ├── UpdateNotice.tsx
+    │       └── UsageGuide.tsx
     └── pages/
         ├── WorkSubmit.tsx       # 作業入力ページ
         ├── ShiftRequest.tsx     # シフト希望ページ
         ├── History.tsx          # 履歴・明細書ページ
         ├── ShiftAdmin.tsx       # シフト管理ページ
-        └── Settings.tsx         # 設定ページ
+        ├── Settings.tsx         # 設定ページ
+        ├── Login.tsx           # ログインページ（PIN認証）
+        ├── MyShifts.tsx        # マイシフトページ
+        ├── MySalary.tsx        # 給料明細ページ
+        └── MySettings.tsx      # マイ設定ページ
 ```
 
 ---
@@ -167,8 +181,8 @@ wms-v3/
 | 作業者CRUD | WorkerManager | [ ] |
 | アバターアップロード | WorkerManager | [ ] |
 | 加工種類CRUD | PriceManager | [ ] |
-| パスワード保護 | AdminGuard | [ ] |
-| パスワード変更 | PasswordForm | [ ] |
+| PIN認証 | AdminGuard | [ ] |
+| PIN変更 | PasswordForm | [ ] |
 | クラウド同期 | useSync + Zustand | [ ] |
 | オフライン検出 | useSync | [ ] |
 | モバイルUI | BottomNav + Sidebar | [ ] |

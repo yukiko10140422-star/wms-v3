@@ -1,7 +1,9 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { ArrowLeft, Delete, Shield } from 'lucide-react'
 import { useStore } from '../store/useStore'
-import type { Worker } from '../lib/types'
+
+const MAX_ATTEMPTS = 5
+const LOCKOUT_SECONDS = 30
 
 interface LoginProps {
   onLoginSuccess: () => void
@@ -13,8 +15,42 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null)
   const [pin, setPin] = useState('')
   const [shaking, setShaking] = useState(false)
+  const [failedAttempts, setFailedAttempts] = useState(0)
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null)
+  const [lockoutRemaining, setLockoutRemaining] = useState(0)
+  const lockoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const isLockedOut = lockedUntil !== null && Date.now() < lockedUntil
 
   const selectedWorker = workers.find((w) => w.id === selectedWorkerId)
+
+  // Countdown timer for lockout
+  useEffect(() => {
+    if (lockedUntil === null) {
+      setLockoutRemaining(0)
+      return
+    }
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000))
+      setLockoutRemaining(remaining)
+      if (remaining <= 0) {
+        setLockedUntil(null)
+        setFailedAttempts(0)
+        if (lockoutTimerRef.current) {
+          clearInterval(lockoutTimerRef.current)
+          lockoutTimerRef.current = null
+        }
+      }
+    }
+    tick()
+    lockoutTimerRef.current = setInterval(tick, 1000)
+    return () => {
+      if (lockoutTimerRef.current) {
+        clearInterval(lockoutTimerRef.current)
+        lockoutTimerRef.current = null
+      }
+    }
+  }, [lockedUntil])
 
   const handleWorkerSelect = useCallback((workerId: string, workerPin: string | null) => {
     if (workerPin === null || workerPin === '') return
@@ -26,9 +62,12 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
     setSelectedWorkerId(null)
     setPin('')
     setShaking(false)
+    setFailedAttempts(0)
+    setLockedUntil(null)
   }, [])
 
   const handlePinDigit = useCallback((digit: string) => {
+    if (isLockedOut) return
     setPin((prev) => {
       if (prev.length >= 4) return prev
       const next = prev + digit
@@ -37,9 +76,16 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
         setTimeout(() => {
           const success = loginWorker(selectedWorkerId, next)
           if (success) {
+            setFailedAttempts(0)
+            setLockedUntil(null)
             showToast('ログインしました', 'success')
             onLoginSuccess()
           } else {
+            const newAttempts = failedAttempts + 1
+            setFailedAttempts(newAttempts)
+            if (newAttempts >= MAX_ATTEMPTS) {
+              setLockedUntil(Date.now() + LOCKOUT_SECONDS * 1000)
+            }
             setShaking(true)
             setTimeout(() => {
               setShaking(false)
@@ -51,15 +97,17 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
       }
       return next
     })
-  }, [selectedWorkerId, loginWorker, showToast, onLoginSuccess])
+  }, [selectedWorkerId, loginWorker, showToast, onLoginSuccess, isLockedOut, failedAttempts])
 
   const handleBackspace = useCallback(() => {
+    if (isLockedOut) return
     setPin((prev) => prev.slice(0, -1))
-  }, [])
+  }, [isLockedOut])
 
   const handleClear = useCallback(() => {
+    if (isLockedOut) return
     setPin('')
-  }, [])
+  }, [isLockedOut])
 
   // 物理キーボード対応（PCや外付けキーボード使用時）
   useEffect(() => {
@@ -76,6 +124,8 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedWorkerId, handlePinDigit, handleBackspace, handleBack])
+
+  const remainingAttempts = MAX_ATTEMPTS - failedAttempts
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-start px-4 pt-12 pb-8 safe-top">
@@ -119,12 +169,12 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
                       src={worker.avatar}
                       alt={worker.name}
                       className="w-14 h-14 rounded-full object-cover"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }}
                     />
-                  ) : (
-                    <div className="w-14 h-14 rounded-full bg-mango-light text-mango-dark flex items-center justify-center text-xl font-bold">
-                      {initial}
-                    </div>
-                  )}
+                  ) : null}
+                  <div className={`w-14 h-14 rounded-full bg-mango-light text-mango-dark flex items-center justify-center text-xl font-bold ${worker.avatar ? 'hidden' : ''}`}>
+                    {initial}
+                  </div>
                   <span className="text-sm font-medium text-ink truncate w-full text-center">
                     {worker.name}
                   </span>
@@ -153,15 +203,33 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
                 src={selectedWorker.avatar}
                 alt={selectedWorker.name}
                 className="w-16 h-16 rounded-full object-cover mb-2"
+                onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden') }}
               />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-mango-light text-mango-dark flex items-center justify-center text-2xl font-bold mb-2">
-                {selectedWorker?.name.charAt(0)}
-              </div>
-            )}
+            ) : null}
+            <div className={`w-16 h-16 rounded-full bg-mango-light text-mango-dark flex items-center justify-center text-2xl font-bold mb-2 ${selectedWorker?.avatar ? 'hidden' : ''}`}>
+              {selectedWorker?.name.charAt(0)}
+            </div>
             <span className="text-lg font-bold text-ink">{selectedWorker?.name}</span>
             <span className="text-xs text-muted mt-1">4桁のPINを入力</span>
           </div>
+
+          {/* Lockout or remaining attempts message */}
+          {isLockedOut ? (
+            <div className="mb-4 text-center">
+              <p className="text-sm font-bold text-red-500">
+                ロックされています
+              </p>
+              <p className="text-xs text-red-400 mt-1">
+                {lockoutRemaining}秒後に再試行できます
+              </p>
+            </div>
+          ) : failedAttempts > 2 ? (
+            <div className="mb-4 text-center">
+              <p className="text-xs text-red-500">
+                残り{remainingAttempts}回の試行でロックされます
+              </p>
+            </div>
+          ) : null}
 
           {/* PIN dots */}
           <div
@@ -185,30 +253,50 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
               <button
                 key={digit}
                 type="button"
+                disabled={isLockedOut}
                 onClick={() => handlePinDigit(digit)}
-                className="h-16 rounded-xl bg-white border border-border text-xl font-bold text-ink shadow-sm hover:bg-mango-light hover:border-mango active:scale-95 transition-all duration-100 cursor-pointer"
+                className={`h-16 rounded-xl bg-white border border-border text-xl font-bold text-ink shadow-sm transition-all duration-100 ${
+                  isLockedOut
+                    ? 'opacity-40 cursor-not-allowed'
+                    : 'hover:bg-mango-light hover:border-mango active:scale-95 cursor-pointer'
+                }`}
               >
                 {digit}
               </button>
             ))}
             <button
               type="button"
+              disabled={isLockedOut}
               onClick={handleClear}
-              className="h-16 rounded-xl bg-white border border-border text-xs font-bold text-muted hover:bg-red-50 hover:border-red-200 active:scale-95 transition-all duration-100 cursor-pointer"
+              className={`h-16 rounded-xl bg-white border border-border text-xs font-bold text-muted transition-all duration-100 ${
+                isLockedOut
+                  ? 'opacity-40 cursor-not-allowed'
+                  : 'hover:bg-red-50 hover:border-red-200 active:scale-95 cursor-pointer'
+              }`}
             >
               クリア
             </button>
             <button
               type="button"
+              disabled={isLockedOut}
               onClick={() => handlePinDigit('0')}
-              className="h-16 rounded-xl bg-white border border-border text-xl font-bold text-ink shadow-sm hover:bg-mango-light hover:border-mango active:scale-95 transition-all duration-100 cursor-pointer"
+              className={`h-16 rounded-xl bg-white border border-border text-xl font-bold text-ink shadow-sm transition-all duration-100 ${
+                isLockedOut
+                  ? 'opacity-40 cursor-not-allowed'
+                  : 'hover:bg-mango-light hover:border-mango active:scale-95 cursor-pointer'
+              }`}
             >
               0
             </button>
             <button
               type="button"
+              disabled={isLockedOut}
               onClick={handleBackspace}
-              className="h-16 rounded-xl bg-white border border-border flex items-center justify-center text-muted hover:bg-red-50 hover:border-red-200 active:scale-95 transition-all duration-100 cursor-pointer"
+              className={`h-16 rounded-xl bg-white border border-border flex items-center justify-center text-muted transition-all duration-100 ${
+                isLockedOut
+                  ? 'opacity-40 cursor-not-allowed'
+                  : 'hover:bg-red-50 hover:border-red-200 active:scale-95 cursor-pointer'
+              }`}
             >
               <Delete className="w-5 h-5" />
             </button>
