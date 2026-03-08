@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Users, Clock, ChevronDown, ChevronUp, CircleDot } from 'lucide-react'
+import { Users, Clock, ChevronDown, ChevronUp, CircleDot, Copy } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '../../store/useStore'
 import type { Draft } from '../../lib/types'
@@ -99,9 +99,10 @@ function DraftCard({
       {!isSelf && onImport && activeItems.length > 0 && (
         <button
           onClick={onImport}
-          className="mt-2 ml-9 text-xs bg-mango/10 text-mango-dark hover:bg-mango/20 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
+          className="mt-2 ml-9 flex items-center gap-1.5 text-xs bg-mango/10 text-mango-dark hover:bg-mango/20 px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-colors"
         >
-          このデータを取り込む
+          <Copy className="w-3 h-3" />
+          この内容を自分のフォームにコピー
         </button>
       )}
     </div>
@@ -140,12 +141,12 @@ export default function LiveDrafts({ currentDeviceId, onImportDraft }: LiveDraft
           )}
           <span className="text-sm font-bold text-ink">
             {otherCount > 0
-              ? `${otherCount}人が同時に作業中`
-              : '自分のみ作業中'
+              ? `他${otherCount}台で入力中`
+              : '自分のみ'
             }
           </span>
           <span className="text-xs text-muted">
-            （全{activeDrafts.length}台）
+            タップして詳細を表示
           </span>
         </div>
         {expanded ? (
