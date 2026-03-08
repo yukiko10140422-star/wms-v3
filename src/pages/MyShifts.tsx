@@ -575,7 +575,8 @@ export default function MyShifts() {
 
       {/* Edit Modal */}
       {editingShift !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-ink">シフト日程を編集</h3>

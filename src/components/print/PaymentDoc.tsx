@@ -163,10 +163,10 @@ export default function PaymentDoc({
   }
 
   return (
-    <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-white z-50 overflow-y-auto"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {/* Action bar — safe area対応 */}
-      <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-border px-6 py-3 flex items-center justify-center gap-3 z-10"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}>
+      <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-border px-6 py-4 flex items-center justify-center gap-3 z-10">
         <Button variant="secondary" onClick={onClose}>
           <ArrowLeft className="w-4 h-4" />
           戻る
