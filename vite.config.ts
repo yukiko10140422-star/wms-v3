@@ -10,7 +10,4 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  define: {
-    __BUILD_ID__: JSON.stringify(new Date().toISOString()),
-  },
 })

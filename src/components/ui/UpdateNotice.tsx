@@ -2,18 +2,32 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Sparkles } from 'lucide-react'
 
-// ビルド時に自動的に更新される（Viteのdefine経由）
-const BUILD_ID = __BUILD_ID__
-const STORAGE_KEY = 'wms-last-seen-build'
+const STORAGE_KEY = 'wms-last-seen-version'
 
 interface UpdateEntry {
+  version: string
   title: string
   items: string[]
 }
 
 // 新しいアップデートを一番上に追加していく
+// version を上げたときだけ通知が表示される
 const updates: UpdateEntry[] = [
   {
+    version: '2.3',
+    title: 'v2.3 — 使いやすさ大幅アップ',
+    items: [
+      '作業者を最初に選ぶようにフォームの順番を変えました',
+      '提出後に内容の確認画面が表示されるようになりました',
+      '提出直後なら「取り消す」ことができます',
+      '「前回と同じ内容で入力」ボタンで入力の手間が減ります',
+      '今日の提出状況（人数・金額・未提出者）が一目でわかります',
+      '作業現場の写真を最大3枚まで添付できるようになりました',
+      'アプリにほしい機能を送信できるようになりました（設定画面から）',
+    ],
+  },
+  {
+    version: '2.2',
     title: 'v2.2 — リアルタイム共有 & 安全性アップ',
     items: [
       '入力中のデータを別の端末からも確認できるようになりました',
@@ -23,6 +37,7 @@ const updates: UpdateEntry[] = [
     ],
   },
   {
+    version: '2.1',
     title: 'v2.1 — もっと使いやすくなりました',
     items: [
       '画面の文字や色が見やすくなりました',
@@ -34,19 +49,22 @@ const updates: UpdateEntry[] = [
   },
 ]
 
+const LATEST_VERSION = updates[0].version
+
 export default function UpdateNotice() {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
     const lastSeen = localStorage.getItem(STORAGE_KEY)
-    if (lastSeen !== BUILD_ID) {
+    // バージョンが変わったときだけ表示
+    if (lastSeen !== LATEST_VERSION) {
       setOpen(true)
     }
   }, [])
 
   const handleClose = () => {
     setOpen(false)
-    localStorage.setItem(STORAGE_KEY, BUILD_ID)
+    localStorage.setItem(STORAGE_KEY, LATEST_VERSION)
   }
 
   return (
@@ -87,21 +105,17 @@ export default function UpdateNotice() {
               </div>
             </div>
 
-            {/* Content */}
+            {/* Content - only show latest update */}
             <div className="p-5 max-h-[60vh] overflow-y-auto">
-              {updates.map((update, i) => (
-                <div key={i} className={i > 0 ? 'mt-5 pt-5 border-t border-border' : ''}>
-                  <h3 className="font-bold text-ink text-sm mb-3">{update.title}</h3>
-                  <ul className="space-y-2">
-                    {update.items.map((item, j) => (
-                      <li key={j} className="flex items-start gap-2 text-sm text-ink/80">
-                        <span className="text-mango mt-0.5 flex-shrink-0">●</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              <h3 className="font-bold text-ink text-sm mb-3">{updates[0].title}</h3>
+              <ul className="space-y-2">
+                {updates[0].items.map((item, j) => (
+                  <li key={j} className="flex items-start gap-2 text-sm text-ink/80">
+                    <span className="text-mango mt-0.5 flex-shrink-0">●</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             {/* Footer */}
