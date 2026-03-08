@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import type { Worker, Process, WorkRecord, Shift, Settings, Draft } from '../lib/types'
+import type { Worker, Process, WorkRecord, Shift, Settings, Draft, FeatureRequest } from '../lib/types'
 
 type SyncStatus = 'idle' | 'loading' | 'ok' | 'error'
 type ToastType = 'success' | 'error' | 'info'
@@ -18,6 +18,7 @@ interface StoreState {
   shifts: Shift[]
   settings: Settings | null
   drafts: Draft[]
+  featureRequests: FeatureRequest[]
   syncStatus: SyncStatus
   isOnline: boolean
   adminUnlocked: boolean
@@ -54,6 +55,11 @@ interface StoreState {
   saveDraft: (draft: Omit<Draft, 'updated_at'>) => Promise<void>
   deleteDraft: (id: string) => Promise<void>
   fetchDrafts: () => Promise<void>
+
+  // Feature Requests
+  addFeatureRequest: (req: { author_name: string; content: string }) => Promise<void>
+  fetchFeatureRequests: () => Promise<void>
+  updateFeatureRequest: (id: number, data: Partial<FeatureRequest>) => Promise<void>
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -63,6 +69,7 @@ export const useStore = create<StoreState>((set, get) => ({
   shifts: [],
   settings: null,
   drafts: [],
+  featureRequests: [],
   syncStatus: 'idle',
   isOnline: navigator.onLine,
   adminUnlocked: false,
@@ -420,6 +427,47 @@ export const useStore = create<StoreState>((set, get) => ({
     if (!error) {
       set((s) => ({ drafts: s.drafts.filter((d) => d.id !== id) }))
     }
+  },
+
+  // Feature Requests
+  addFeatureRequest: async (req) => {
+    const newReq = {
+      ...req,
+      id: Date.now(),
+      status: 'new' as const,
+      admin_note: '',
+      created_at: new Date().toISOString(),
+    }
+    const { error } = await supabase.from('feature_requests').insert(newReq)
+    if (error) {
+      get().showToast('送信に失敗しました', 'error')
+      return
+    }
+    set((s) => ({ featureRequests: [newReq, ...s.featureRequests] }))
+    get().showToast('リクエストを送信しました', 'success')
+  },
+
+  fetchFeatureRequests: async () => {
+    const { data, error } = await supabase
+      .from('feature_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (!error && data) {
+      set({ featureRequests: data as FeatureRequest[] })
+    }
+  },
+
+  updateFeatureRequest: async (id, data) => {
+    const { error } = await supabase.from('feature_requests').update(data).eq('id', id)
+    if (error) {
+      get().showToast('更新に失敗しました', 'error')
+      return
+    }
+    set((s) => ({
+      featureRequests: s.featureRequests.map((r) =>
+        r.id === id ? { ...r, ...data } : r
+      ),
+    }))
   },
 
   // Toast

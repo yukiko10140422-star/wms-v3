@@ -72,6 +72,15 @@ export type Settings = {
   admin_pw: string
 }
 
+export type FeatureRequest = {
+  id: number
+  author_name: string
+  content: string
+  status: 'new' | 'reviewed' | 'planned' | 'done' | 'declined'
+  admin_note: string
+  created_at: string
+}
+
 export type Draft = {
   id: string
   worker_id: string | null

@@ -5,6 +5,8 @@ import PasswordForm from '../components/settings/PasswordForm'
 import WorkerManager from '../components/settings/WorkerManager'
 import PriceManager from '../components/settings/PriceManager'
 import Button from '../components/ui/Button'
+import FeatureRequestForm from '../components/settings/FeatureRequestForm'
+import FeatureRequestList from '../components/settings/FeatureRequestList'
 
 export default function Settings() {
   const {
@@ -113,6 +115,16 @@ export default function Settings() {
       {/* 5. Password */}
       <div className="bg-white rounded-2xl border border-border p-6 mb-6">
         <PasswordForm onSave={handleChangePassword} />
+      </div>
+
+      {/* 6. Feature Request - Submit */}
+      <div className="bg-white rounded-2xl border border-border p-6 mb-6">
+        <FeatureRequestForm />
+      </div>
+
+      {/* 7. Feature Request - Admin List */}
+      <div className="bg-white rounded-2xl border border-border p-6 mb-6">
+        <FeatureRequestList />
       </div>
     </div>
   )
