@@ -3,6 +3,7 @@ export type Worker = {
   name: string
   address: string
   avatar: string
+  pin: string | null
   bank_name: string
   bank_branch: string
   bank_type: string
@@ -57,6 +58,8 @@ export type Shift = {
   dates: string[]
   submitted_at: string
   status: 'pending' | 'approved' | 'rejected'
+  type: 'shift' | 'absence'
+  reason: string
 }
 
 export type Settings = {

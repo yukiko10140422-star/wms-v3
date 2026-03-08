@@ -22,6 +22,8 @@ interface StoreState {
   syncStatus: SyncStatus
   isOnline: boolean
   adminUnlocked: boolean
+  loggedInWorker: Worker | null
+  workerSessionLoaded: boolean
   toast: Toast | null
   _realtimeChannel: RealtimeChannel | null
   _draftsAvailable: boolean
@@ -30,6 +32,12 @@ interface StoreState {
   subscribeRealtime: () => void
   unsubscribeRealtime: () => void
   unlockAdmin: (password: string) => boolean
+
+  // Worker auth
+  loginWorker: (workerId: string, pin: string) => boolean
+  logoutWorker: () => void
+  restoreWorkerSession: () => void
+  updateWorkerPin: (workerId: string, newPin: string) => Promise<boolean>
 
   addRecord: (record: Omit<WorkRecord, 'id' | 'created_at'>) => Promise<number | null>
   updateRecordStatus: (id: number, status: WorkRecord['status']) => Promise<void>
@@ -45,6 +53,7 @@ interface StoreState {
   reorderProcesses: (ids: string[]) => Promise<void>
 
   addShift: (shift: Omit<Shift, 'id'>) => Promise<void>
+  updateShift: (id: number, data: Partial<Shift>) => Promise<void>
   updateShiftStatus: (id: number, status: Shift['status']) => Promise<void>
   deleteShift: (id: number) => Promise<void>
 
@@ -73,6 +82,8 @@ export const useStore = create<StoreState>((set, get) => ({
   syncStatus: 'idle',
   isOnline: navigator.onLine,
   adminUnlocked: false,
+  loggedInWorker: null,
+  workerSessionLoaded: false,
   toast: null,
   _realtimeChannel: null,
   _draftsAvailable: false,
@@ -244,6 +255,60 @@ export const useStore = create<StoreState>((set, get) => ({
     return false
   },
 
+  // Worker auth
+  loginWorker: (workerId: string, pin: string) => {
+    const worker = get().workers.find((w) => w.id === workerId)
+    if (!worker) return false
+    if (worker.pin === null || worker.pin === '') {
+      // PIN未設定の場合はログイン不可（管理者が設定する必要あり）
+      return false
+    }
+    if (worker.pin !== pin) return false
+    set({ loggedInWorker: worker })
+    localStorage.setItem('wms-worker-session', JSON.stringify({ workerId: worker.id }))
+    return true
+  },
+
+  logoutWorker: () => {
+    set({ loggedInWorker: null })
+    localStorage.removeItem('wms-worker-session')
+  },
+
+  restoreWorkerSession: () => {
+    try {
+      const saved = localStorage.getItem('wms-worker-session')
+      if (saved) {
+        const { workerId } = JSON.parse(saved)
+        const worker = get().workers.find((w) => w.id === workerId)
+        if (worker && worker.pin) {
+          set({ loggedInWorker: worker, workerSessionLoaded: true })
+          return
+        }
+        // 作業者が存在しないかPINがクリアされた場合
+        localStorage.removeItem('wms-worker-session')
+      }
+    } catch {
+      localStorage.removeItem('wms-worker-session')
+    }
+    set({ workerSessionLoaded: true })
+  },
+
+  updateWorkerPin: async (workerId: string, newPin: string) => {
+    const { error } = await supabase.from('workers').update({ pin: newPin }).eq('id', workerId)
+    if (error) {
+      get().showToast('PINの更新に失敗しました', 'error')
+      return false
+    }
+    set((s) => ({
+      workers: s.workers.map((w) => (w.id === workerId ? { ...w, pin: newPin } : w)),
+      loggedInWorker: s.loggedInWorker?.id === workerId
+        ? { ...s.loggedInWorker, pin: newPin }
+        : s.loggedInWorker,
+    }))
+    get().showToast('PINを更新しました', 'success')
+    return true
+  },
+
   // Records
   addRecord: async (record) => {
     const newRecord = { ...record, id: Date.now(), created_at: new Date().toISOString() }
@@ -372,6 +437,18 @@ export const useStore = create<StoreState>((set, get) => ({
     }
     set((s) => ({ shifts: [newShift, ...s.shifts] }))
     get().showToast('シフトを提出しました', 'success')
+  },
+
+  updateShift: async (id, data) => {
+    const { error } = await supabase.from('shifts').update(data).eq('id', id)
+    if (error) {
+      get().showToast('シフトの更新に失敗しました', 'error')
+      return
+    }
+    set((s) => ({
+      shifts: s.shifts.map((sh) => (sh.id === id ? { ...sh, ...data } : sh)),
+    }))
+    get().showToast('シフトを更新しました', 'success')
   },
 
   updateShiftStatus: async (id, status) => {

@@ -9,8 +9,11 @@ import UpdateNotice from './components/ui/UpdateNotice'
 import UsageGuide from './components/ui/UsageGuide'
 import { useOfflineQueue } from './hooks/useOfflineQueue'
 import { useTheme } from './hooks/useTheme'
+import Login from './pages/Login'
 import WorkSubmit from './pages/WorkSubmit'
-import ShiftRequest from './pages/ShiftRequest'
+import MyShifts from './pages/MyShifts'
+import MySalary from './pages/MySalary'
+import MySettings from './pages/MySettings'
 import History from './pages/History'
 import ShiftAdmin from './pages/ShiftAdmin'
 import Settings from './pages/Settings'
@@ -27,15 +30,21 @@ export default function App() {
   const syncStatus = useStore((s) => s.syncStatus)
   const adminUnlocked = useStore((s) => s.adminUnlocked)
   const unlockAdmin = useStore((s) => s.unlockAdmin)
+  const loggedInWorker = useStore((s) => s.loggedInWorker)
+  const restoreWorkerSession = useStore((s) => s.restoreWorkerSession)
+  const workerSessionLoaded = useStore((s) => s.workerSessionLoaded)
+  const logoutWorker = useStore((s) => s.logoutWorker)
 
   const { queueLength } = useOfflineQueue()
   const { theme, setTheme } = useTheme()
 
   useEffect(() => {
-    fetchAll()
+    fetchAll().then(() => {
+      restoreWorkerSession()
+    })
     subscribeRealtime()
     return () => unsubscribeRealtime()
-  }, [fetchAll, subscribeRealtime, unsubscribeRealtime])
+  }, [fetchAll, subscribeRealtime, unsubscribeRealtime, restoreWorkerSession])
 
   const handleNavigate = (page: string) => {
     setCurrentPage(page)
@@ -60,8 +69,12 @@ export default function App() {
     switch (currentPage) {
       case 'work':
         return <WorkSubmit />
-      case 'shift-request':
-        return <ShiftRequest />
+      case 'my-shifts':
+        return <MyShifts />
+      case 'my-salary':
+        return <MySalary />
+      case 'my-settings':
+        return <MySettings onLogout={() => { logoutWorker(); setCurrentPage('work') }} />
       case 'history':
         return <History />
       case 'shift-manage':
@@ -71,6 +84,23 @@ export default function App() {
       default:
         return <WorkSubmit />
     }
+  }
+
+  if (!workerSessionLoaded) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-mango border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (!loggedInWorker) {
+    return (
+      <div className="min-h-screen bg-background text-ink font-sans">
+        <Login onLoginSuccess={() => setCurrentPage('work')} />
+        <Toast />
+      </div>
+    )
   }
 
   return (
@@ -86,6 +116,8 @@ export default function App() {
           adminUnlocked={adminUnlocked}
           theme={theme}
           onThemeChange={setTheme}
+          workerName={loggedInWorker?.name}
+          workerAvatar={loggedInWorker?.avatar}
         />
 
         <main className="flex-1 min-h-screen pb-20 lg:pb-0">

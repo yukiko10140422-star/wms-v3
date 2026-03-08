@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ClipboardList, CalendarDays, Shield, HelpCircle, FileText, Users, Settings, X, Sun, Moon, Monitor } from 'lucide-react'
+import { ClipboardList, CalendarDays, Wallet, User, Shield, FileText, Users, Settings, X, Sun, Moon, Monitor } from 'lucide-react'
 import type { Theme } from '../../hooks/useTheme'
 
 interface BottomNavProps {
@@ -15,7 +15,9 @@ interface BottomNavProps {
 
 const mainItems = [
   { id: 'work', label: '作業入力', icon: ClipboardList },
-  { id: 'shift-request', label: 'シフト', icon: CalendarDays },
+  { id: 'my-shifts', label: 'シフト', icon: CalendarDays },
+  { id: 'my-salary', label: '給料', icon: Wallet },
+  { id: 'my-settings', label: 'マイページ', icon: User },
 ]
 
 const adminMenuItems = [
@@ -143,15 +145,6 @@ export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onO
           >
             <Shield className="w-5 h-5" />
             <span className="text-[10px]">管理者</span>
-          </button>
-
-          {/* Guide Button */}
-          <button
-            onClick={onOpenGuide}
-            className="flex flex-col items-center gap-0.5 px-3 py-1 cursor-pointer text-muted transition-colors"
-          >
-            <HelpCircle className="w-5 h-5" />
-            <span className="text-[10px]">ガイド</span>
           </button>
         </div>
       </nav>

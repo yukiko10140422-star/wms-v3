@@ -160,6 +160,29 @@
 
 ---
 
+## Phase 8（認証 & マイページ）
+
+| タスク | ステータス | 担当Agent | 備考 |
+| --- | --- | --- | --- |
+| Worker型にpin追加 | 完了 | main | string \| null |
+| Shift型にtype/reason追加 | 完了 | main | 'shift' \| 'absence' |
+| Store認証レイヤー | 完了 | main | login/logout/restore/updatePin |
+| Store updateShift追加 | 完了 | main | pendingシフト編集用 |
+| DB移行SQL | 完了 | main | docs/migration_phase8.sql |
+| ログインページ | 完了 | main | PIN入力+シェイクアニメ |
+| マイシフトページ | 完了 | main | 提出/確認/変更/欠勤届 |
+| 給料明細ページ | 完了 | main | 月別サマリー+請求書 |
+| マイ設定ページ | 完了 | main | PIN変更+ログアウト |
+| Sidebar更新 | 完了 | main | 作業者プロフィール+新メニュー |
+| BottomNav更新 | 完了 | main | 5タブ構成 |
+| App.tsxルーティング | 完了 | main | 認証ガード+新ページ統合 |
+| WorkSubmit適応 | 完了 | main | WorkerPicker除去、自動設定 |
+| 請求書フォーマット変更 | 完了 | main | 支払元固定、請求者=提出者 |
+| アップデート通知v3.0 | 完了 | main | 新機能一覧 |
+| pin/typeカラム追加 | 待機 | - | Supabase SQLエディタで実行必要 |
+
+---
+
 ## 今後の改善候補（バックログ）
 
 > 優先度順。実運用のフィードバックをもとに着手する。

@@ -115,6 +115,7 @@ export default function WorkerManager({
       bank_type: bankType,
       bank_number: bankNumber.trim(),
       bank_holder: bankHolder.trim(),
+      pin: null,
     }
 
     if (editingId) {

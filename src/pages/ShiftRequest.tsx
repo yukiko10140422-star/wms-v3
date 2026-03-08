@@ -68,6 +68,8 @@ export default function ShiftRequest() {
       dates: sortedDays,
       submitted_at: new Date().toISOString(),
       status: 'pending',
+      type: 'shift',
+      reason: '',
     })
     setLoading(false)
     setSubmitted(true)

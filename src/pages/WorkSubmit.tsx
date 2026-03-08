@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, CheckCircle2, RotateCcw, ClipboardCheck } from 'lucide-react'
 import { useStore } from '../store/useStore'
-import WorkerPicker from '../components/work/WorkerPicker'
 import ProcessList from '../components/work/ProcessList'
 import BonusToggle from '../components/work/BonusToggle'
 import Timer from '../components/work/Timer'
@@ -11,7 +10,7 @@ import Button from '../components/ui/Button'
 import LiveDrafts from '../components/work/LiveDrafts'
 import PhotoAttach from '../components/work/PhotoAttach'
 import { enqueueRecord } from '../hooks/useOfflineQueue'
-import type { Worker, WorkItem, TimerLogEntry, Draft } from '../lib/types'
+import type { WorkItem, TimerLogEntry, Draft } from '../lib/types'
 
 const DRAFT_KEY = 'wms-worksubmit-draft'
 const LAST_SUBMIT_KEY = 'wms-last-submit'
@@ -70,10 +69,9 @@ export default function WorkSubmit() {
   const showToast = useStore((s) => s.showToast)
   const saveDraftToServer = useStore((s) => s.saveDraft)
   const deleteDraftFromServer = useStore((s) => s.deleteDraft)
+  const loggedInWorker = useStore((s) => s.loggedInWorker)
 
   const draft = useRef(loadDraft()).current
-
-  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null)
   const [workDate, setWorkDate] = useState(() => draft?.workDate || new Date().toISOString().split('T')[0])
   const [address, setAddress] = useState(() => draft?.address || '')
   const [remarks, setRemarks] = useState(() => draft?.remarks || '')
@@ -104,7 +102,7 @@ export default function WorkSubmit() {
   const [masterChanged, setMasterChanged] = useState(false)
   const prevProcessesRef = useRef<string>('')
   const prevWorkersRef = useRef<string>('')
-  const hasInput = items.length > 0 || selectedWorker !== null
+  const hasInput = items.length > 0 || loggedInWorker !== null
 
   // 工程・作業者のマスタ変更を検知
   useEffect(() => {
@@ -116,40 +114,31 @@ export default function WorkSubmit() {
     }
     if (prevWorkersRef.current && prevWorkersRef.current !== workersKey && hasInput) {
       setMasterChanged(true)
-      // 選択中の作業者が削除された場合
-      if (selectedWorker && !workers.some((w) => w.id === selectedWorker.id)) {
-        setSelectedWorker(null)
-        showToast('選択していた作業者が削除されました', 'error')
-      }
     }
 
     prevProcessesRef.current = processesKey
     prevWorkersRef.current = workersKey
-  }, [processes, workers, hasInput, selectedWorker, showToast])
+  }, [processes, workers, hasInput])
 
-  // 下書きから作業者を復元（workers読み込み後）
+  // ログイン中の作業者の住所を自動設定
   useEffect(() => {
-    if (draft?.workerId && workers.length > 0 && !selectedWorker) {
-      const found = workers.find((w) => w.id === draft.workerId)
-      if (found) {
-        setSelectedWorker(found)
-        if (!address) setAddress(found.address || '')
-      }
+    if (loggedInWorker && !address && !draft?.address) {
+      setAddress(loggedInWorker.address || '')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workers])
+  }, [loggedInWorker])
 
   // フォーム変更時にlocalStorageへ保存
   useEffect(() => {
     saveLocalDraft({
-      workerId: selectedWorker?.id ?? null,
+      workerId: loggedInWorker?.id ?? null,
       workDate,
       address,
       remarks,
       bonusOn,
       bonusRate,
     })
-  }, [selectedWorker, workDate, address, remarks, bonusOn, bonusRate])
+  }, [loggedInWorker, workDate, address, remarks, bonusOn, bonusRate])
 
   // Supabase下書き同期（デバウンス2秒）
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -168,8 +157,8 @@ export default function WorkSubmit() {
 
       saveDraftToServer({
         id: deviceId,
-        worker_id: selectedWorker?.id ?? null,
-        worker_name: selectedWorker?.name ?? '',
+        worker_id: loggedInWorker?.id ?? null,
+        worker_name: loggedInWorker?.name ?? '',
         work_date: workDate,
         address,
         remarks,
@@ -184,12 +173,7 @@ export default function WorkSubmit() {
     return () => {
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
     }
-  }, [selectedWorker, workDate, address, remarks, bonusOn, bonusRate, baseTotal, items, saveDraftToServer])
-
-  const handleWorkerSelect = useCallback((worker: Worker) => {
-    setSelectedWorker(worker)
-    setAddress(worker.address || '')
-  }, [])
+  }, [loggedInWorker, workDate, address, remarks, bonusOn, bonusRate, baseTotal, items, saveDraftToServer])
 
   const handleItemsChange = useCallback((newItems: WorkItem[], newBaseTotal: number) => {
     setItems(newItems)
@@ -202,15 +186,6 @@ export default function WorkSubmit() {
       `${draft.worker_name || '（未選択）'}さんのデータを取り込みますか？\n現在の入力内容は上書きされます。`
     )
     if (!confirmed) return
-
-    // 作業者を復元
-    if (draft.worker_id) {
-      const found = workers.find((w) => w.id === draft.worker_id)
-      if (found) {
-        setSelectedWorker(found)
-        setAddress(found.address || '')
-      }
-    }
 
     // フォームフィールド復元
     if (draft.work_date) setWorkDate(draft.work_date)
@@ -225,7 +200,7 @@ export default function WorkSubmit() {
     })
 
     showToast('データを取り込みました', 'success')
-  }, [workers, showToast])
+  }, [showToast])
 
   const handleTimerApply = useCallback(
     (result: { hours: number; timer_work_ms: number; timer_log: TimerLogEntry[] }) => {
@@ -265,32 +240,25 @@ export default function WorkSubmit() {
   const total = baseTotal + bonusAmt
 
   const handleSubmit = async () => {
-    // 1. 作業者の選択チェック
-    if (!selectedWorker) {
-      showToast('作業者を選択してください', 'error')
+    // 1. 作業者のログインチェック
+    if (!loggedInWorker) {
+      showToast('ログインしてください', 'error')
       return
     }
 
-    // 2. 作業者がまだ存在するかチェック
-    if (!workers.some((w) => w.id === selectedWorker.id)) {
-      showToast('この作業者は削除されたため提出できません', 'error')
-      setSelectedWorker(null)
-      return
-    }
-
-    // 3. 加工内容のチェック
+    // 2. 加工内容のチェック
     if (items.length === 0) {
       showToast('加工内容を入力してください', 'error')
       return
     }
 
-    // 4. 同じ作業者・同じ日の重複チェック
+    // 3. 同じ作業者・同じ日の重複チェック
     const duplicate = records.find(
-      (r) => r.worker_name === selectedWorker.name && r.date === workDate
+      (r) => r.worker_name === loggedInWorker.name && r.date === workDate
     )
     if (duplicate) {
       const confirmed = confirm(
-        `${selectedWorker.name}さんの ${workDate} の記録はすでに存在します。\n重複して提出しますか？`
+        `${loggedInWorker.name}さんの ${workDate} の記録はすでに存在します。\n重複して提出しますか？`
       )
       if (!confirmed) return
     }
@@ -298,7 +266,7 @@ export default function WorkSubmit() {
     setSubmitState('submitting')
 
     try {
-      // 5. 最新単価で再計算
+      // 4. 最新単価で再計算
       const recalc = recalculateWithLatestPrices(items)
       const finalBaseTotal = recalc.baseTotal
       const finalBonusAmt = bonusOn ? Math.round(finalBaseTotal * (bonusRate / 100)) : 0
@@ -306,10 +274,10 @@ export default function WorkSubmit() {
 
       const recordData = {
         date: workDate,
-        worker_name: selectedWorker.name,
+        worker_name: loggedInWorker.name,
         address,
         remarks,
-        avatar: selectedWorker.avatar || '',
+        avatar: loggedInWorker.avatar || '',
         bonus_on: bonusOn,
         bonus_amt: finalBonusAmt,
         bonus_rate: bonusRate,
@@ -340,8 +308,8 @@ export default function WorkSubmit() {
       // 前回提出データをlocalStorageに保存
       try {
         localStorage.setItem(LAST_SUBMIT_KEY, JSON.stringify({
-          workerId: selectedWorker.id,
-          workerName: selectedWorker.name,
+          workerId: loggedInWorker.id,
+          workerName: loggedInWorker.name,
           address,
           bonusOn,
           bonusRate,
@@ -363,7 +331,7 @@ export default function WorkSubmit() {
       // 提出完了サマリーを表示
       setSubmittedSummary({
         recordId,
-        workerName: selectedWorker.name,
+        workerName: loggedInWorker.name,
         date: workDate,
         items: recalc.items,
         baseTotal: finalBaseTotal,
@@ -378,7 +346,6 @@ export default function WorkSubmit() {
 
   const resetForm = useCallback(() => {
     setSubmittedSummary(null)
-    setSelectedWorker(null)
     setWorkDate(new Date().toISOString().split('T')[0])
     setAddress('')
     setRemarks('')
@@ -415,15 +382,6 @@ export default function WorkSubmit() {
       if (!raw) return
       const last = JSON.parse(raw)
 
-      // 作業者を復元
-      if (last.workerId) {
-        const found = workers.find((w) => w.id === last.workerId)
-        if (found) {
-          setSelectedWorker(found)
-          setAddress(found.address || last.address || '')
-        }
-      }
-
       setBonusOn(last.bonusOn ?? false)
       setBonusRate(last.bonusRate ?? 10)
 
@@ -437,7 +395,7 @@ export default function WorkSubmit() {
 
       showToast('前回の入力内容を復元しました', 'success')
     } catch { /* ignore */ }
-  }, [workers, showToast])
+  }, [showToast])
 
   const buttonText =
     submitState === 'submitting'
@@ -522,7 +480,7 @@ export default function WorkSubmit() {
       </AnimatePresence>
 
       {/* 前回の入力を復元ボタン */}
-      {hasLastSubmit && !selectedWorker && items.length === 0 && (
+      {hasLastSubmit && items.length === 0 && (
         <button
           onClick={handleLoadLastSubmit}
           className="w-full flex items-center justify-center gap-2 rounded-xl border border-mango/20 bg-mango-light/30 px-4 py-3 text-sm font-bold text-mango-dark hover:bg-mango-light/50 transition-colors cursor-pointer"
@@ -535,17 +493,7 @@ export default function WorkSubmit() {
       {/* Live Drafts from other devices */}
       <LiveDrafts currentDeviceId={deviceId} onImportDraft={handleImportDraft} />
 
-      {/* Worker Picker - 最初に選択 */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-bold text-muted">作業者</label>
-        <WorkerPicker
-          workers={workers}
-          selectedId={selectedWorker?.id ?? null}
-          onSelect={handleWorkerSelect}
-        />
-      </div>
-
-      {/* Work Date & Address - 作業者選択後に表示 */}
+      {/* Work Date & Address */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-muted">作業日</label>
@@ -620,10 +568,10 @@ export default function WorkSubmit() {
         size="lg"
         className="w-full"
         loading={submitState === 'submitting'}
-        disabled={submitState === 'done' || !selectedWorker}
+        disabled={submitState === 'done' || !loggedInWorker}
         onClick={handleSubmit}
       >
-        {!selectedWorker ? '作業者を選択してください' : buttonText}
+        {buttonText}
       </Button>
 
       {/* 提出完了確認モーダル */}

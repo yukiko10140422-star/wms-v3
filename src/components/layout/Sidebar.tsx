@@ -1,4 +1,4 @@
-import { ClipboardList, CalendarDays, FileText, Users, Settings, Lock, HelpCircle, Sun, Moon, Monitor } from 'lucide-react'
+import { ClipboardList, CalendarDays, Wallet, User, FileText, Users, Settings, Lock, HelpCircle, Sun, Moon, Monitor } from 'lucide-react'
 import type { Theme } from '../../hooks/useTheme'
 
 interface SidebarProps {
@@ -9,6 +9,8 @@ interface SidebarProps {
   adminUnlocked: boolean
   theme?: Theme
   onThemeChange?: (theme: Theme) => void
+  workerName?: string
+  workerAvatar?: string
 }
 
 interface NavItem {
@@ -18,9 +20,11 @@ interface NavItem {
   admin?: boolean
 }
 
-const generalItems: NavItem[] = [
+const workerItems: NavItem[] = [
   { id: 'work', label: '作業入力', icon: <ClipboardList className="w-5 h-5" /> },
-  { id: 'shift-request', label: 'シフト希望', icon: <CalendarDays className="w-5 h-5" /> },
+  { id: 'my-shifts', label: 'シフト', icon: <CalendarDays className="w-5 h-5" /> },
+  { id: 'my-salary', label: '給料明細', icon: <Wallet className="w-5 h-5" /> },
+  { id: 'my-settings', label: 'マイページ', icon: <User className="w-5 h-5" /> },
 ]
 
 const adminItems: NavItem[] = [
@@ -29,7 +33,7 @@ const adminItems: NavItem[] = [
   { id: 'settings', label: '設定', icon: <Settings className="w-5 h-5" />, admin: true },
 ]
 
-export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked, theme, onThemeChange }: SidebarProps) {
+export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked, theme, onThemeChange, workerName, workerAvatar }: SidebarProps) {
   const handleClick = (item: NavItem) => {
     if (item.admin && !adminUnlocked) {
       onRequestAdmin(item.id)
@@ -51,6 +55,25 @@ export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpe
         </div>
       </div>
 
+      {/* Worker Profile */}
+      {workerName && (
+        <div className="px-5 pb-4">
+          <div className="flex items-center gap-2">
+            {workerAvatar ? (
+              <img src={workerAvatar} alt={workerName} className="w-8 h-8 rounded-full object-cover" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">
+                {workerName.charAt(0)}
+              </div>
+            )}
+            <div>
+              <div className="text-sm font-bold">{workerName}</div>
+              <div className="text-xs opacity-60">ログイン中</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sync Status */}
       <div className="px-5 pb-4">
         <div className="flex items-center gap-2 text-xs opacity-70">
@@ -61,11 +84,11 @@ export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpe
 
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-6">
-        {/* General Section */}
+        {/* Worker Section */}
         <div>
-          <div className="text-[10px] uppercase tracking-wider opacity-40 px-3 mb-2">一般</div>
+          <div className="text-[10px] uppercase tracking-wider opacity-40 px-3 mb-2">作業者メニュー</div>
           <div className="space-y-1">
-            {generalItems.map((item) => (
+            {workerItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => handleClick(item)}
@@ -144,7 +167,7 @@ export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpe
 
       {/* Footer */}
       <div className="px-5 py-4 text-[10px] opacity-30">
-        WMS v2.3
+        WMS v3.0
       </div>
     </aside>
   )
