@@ -10,6 +10,7 @@ import TotalPanel from '../components/work/TotalPanel'
 import Button from '../components/ui/Button'
 import LiveDrafts from '../components/work/LiveDrafts'
 import PhotoAttach from '../components/work/PhotoAttach'
+import { enqueueRecord } from '../hooks/useOfflineQueue'
 import type { Worker, WorkItem, TimerLogEntry, Draft } from '../lib/types'
 
 const DRAFT_KEY = 'wms-worksubmit-draft'
@@ -303,7 +304,7 @@ export default function WorkSubmit() {
       const finalBonusAmt = bonusOn ? Math.round(finalBaseTotal * (bonusRate / 100)) : 0
       const finalTotal = finalBaseTotal + finalBonusAmt
 
-      const recordId = await addRecord({
+      const recordData = {
         date: workDate,
         worker_name: selectedWorker.name,
         address,
@@ -319,9 +320,19 @@ export default function WorkSubmit() {
         timer_log: timerData?.timer_log ?? [],
         timer_work_ms: timerData?.timer_work_ms ?? 0,
         photos: photos,
-        status: 'pending',
-      })
-      if (!recordId) return
+        status: 'pending' as const,
+      }
+
+      let recordId: number | null = null
+      if (navigator.onLine) {
+        recordId = await addRecord(recordData)
+        if (!recordId) return
+      } else {
+        // オフライン時はキューに保存
+        enqueueRecord(recordData)
+        recordId = Date.now() // ローカル仮ID
+        showToast('オフラインで保存しました（接続時に自動送信します）', 'info')
+      }
 
       setSubmitState('done')
       setMasterChanged(false)

@@ -7,6 +7,7 @@ import AdminGuard from './components/layout/AdminGuard'
 import Toast from './components/ui/Toast'
 import UpdateNotice from './components/ui/UpdateNotice'
 import UsageGuide from './components/ui/UsageGuide'
+import { useOfflineQueue } from './hooks/useOfflineQueue'
 import WorkSubmit from './pages/WorkSubmit'
 import ShiftRequest from './pages/ShiftRequest'
 import History from './pages/History'
@@ -25,6 +26,8 @@ export default function App() {
   const syncStatus = useStore((s) => s.syncStatus)
   const adminUnlocked = useStore((s) => s.adminUnlocked)
   const unlockAdmin = useStore((s) => s.unlockAdmin)
+
+  const { queueLength } = useOfflineQueue()
 
   useEffect(() => {
     fetchAll()
@@ -70,7 +73,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background text-ink font-sans">
-      <SyncBar status={syncStatus} />
+      <SyncBar status={syncStatus} queueLength={queueLength} />
 
       <div className="flex">
         <Sidebar
