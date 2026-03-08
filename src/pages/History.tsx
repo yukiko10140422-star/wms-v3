@@ -81,6 +81,10 @@ export default function History() {
       showToast('月を選択してください', 'error')
       return
     }
+    if (!filterWorker) {
+      showToast('作業者を選択してください', 'error')
+      return
+    }
     if (!filteredRecords.length) {
       showToast('対象の記録がありません', 'error')
       return
@@ -205,7 +209,7 @@ export default function History() {
         <div className="flex gap-2 mt-auto">
           <Button variant="primary" size="md" onClick={handleOpenPrintPreview}>
             <Printer className="w-4 h-4" />
-            月次明細書
+            請求書
           </Button>
           <Button variant="secondary" size="md" onClick={exportCSV}>
             <Download className="w-4 h-4" />
