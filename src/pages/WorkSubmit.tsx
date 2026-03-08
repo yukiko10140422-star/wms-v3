@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, CheckCircle2, RotateCcw, ClipboardCheck } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, RotateCcw, ClipboardCheck, Eraser } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import ProcessList from '../components/work/ProcessList'
 import BonusToggle from '../components/work/BonusToggle'
@@ -347,18 +347,21 @@ export default function WorkSubmit() {
   const resetForm = useCallback(() => {
     setSubmittedSummary(null)
     setWorkDate(new Date().toISOString().split('T')[0])
-    setAddress('')
+    setAddress(loggedInWorker?.address || '')
     setRemarks('')
     setBonusOn(false)
+    setBonusRate(settings?.bonus_rate ?? 10)
     setItems([])
     setBaseTotal(0)
     setTimerData(null)
     setPhotos([])
     setSubmitState('idle')
+    setImportData(null)
+    setMasterChanged(false)
     setResetSignal((s) => s + 1)
     clearAllDrafts()
     deleteDraftFromServer(deviceId)
-  }, [deleteDraftFromServer])
+  }, [deleteDraftFromServer, loggedInWorker, settings])
 
   const handleDismissSummary = resetForm
 
@@ -562,17 +565,32 @@ export default function WorkSubmit() {
         bonusRate={bonusRate}
       />
 
-      {/* Submit Button */}
-      <Button
-        variant="primary"
-        size="lg"
-        className="w-full"
-        loading={submitState === 'submitting'}
-        disabled={submitState === 'done' || !loggedInWorker}
-        onClick={handleSubmit}
-      >
-        {buttonText}
-      </Button>
+      {/* Submit & Reset Buttons */}
+      <div className="flex gap-3">
+        <Button
+          variant="primary"
+          size="lg"
+          className="flex-1"
+          loading={submitState === 'submitting'}
+          disabled={submitState === 'done' || !loggedInWorker}
+          onClick={handleSubmit}
+        >
+          {buttonText}
+        </Button>
+        <Button
+          variant="secondary"
+          size="lg"
+          onClick={() => {
+            if (items.length === 0 || confirm('入力内容をリセットしますか？')) {
+              resetForm()
+              showToast('入力内容をリセットしました', 'info')
+            }
+          }}
+          disabled={submitState === 'submitting'}
+        >
+          <Eraser className="w-4 h-4" />
+        </Button>
+      </div>
 
       {/* 提出完了確認モーダル */}
       <AnimatePresence>
