@@ -2,21 +2,21 @@
 
 /* DEPT-3 デザイン部がカスタマイズする */
 @theme {
-  --color-mango: #ff8c00;
-  --color-mango-light: #fff3e0;
-  --color-mango-dark: #e65c00;
-  --color-yellow: #ffc107;
-  --color-yellow-light: #fffde7;
-  --color-background: #fff8f0;
+  --color-mango: #e67e00;
+  --color-mango-light: #fff0db;
+  --color-mango-dark: #c45500;
+  --color-yellow: #d4a017;
+  --color-yellow-light: #fef9e7;
+  --color-background: #fef7ee;
   --color-white: #ffffff;
-  --color-ink: #2d1a00;
-  --color-muted: #8a6a40;
-  --color-border: #f0d9b5;
-  --color-border-dark: #e0b87a;
-  --color-green: #2e7d32;
-  --color-green-light: #e8f5e9;
-  --color-red: #c62828;
-  --color-red-light: #ffebee;
+  --color-ink: #1a1008;
+  --color-muted: #6b5234;
+  --color-border: #dcc8a6;
+  --color-border-dark: #c4a06a;
+  --color-green: #1b6e22;
+  --color-green-light: #e2f4e5;
+  --color-red: #b71c1c;
+  --color-red-light: #fce4ec;
   --font-sans: 'Noto Sans JP', sans-serif;
   --font-mono: 'DM Mono', monospace;
 }
