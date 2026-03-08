@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, CheckCircle2, RotateCcw } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, RotateCcw, ClipboardCheck } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import WorkerPicker from '../components/work/WorkerPicker'
 import ProcessList from '../components/work/ProcessList'
@@ -431,6 +431,13 @@ export default function WorkSubmit() {
         ? '提出しました'
         : '提出する'
 
+  // 今日の提出状況
+  const today = new Date().toISOString().split('T')[0]
+  const todayRecords = records.filter((r) => r.date === today)
+  const todaySubmittedNames = [...new Set(todayRecords.map((r) => r.worker_name))]
+  const todayTotal = todayRecords.reduce((sum, r) => sum + r.total, 0)
+  const unsubmittedWorkers = workers.filter((w) => !todaySubmittedNames.includes(w.name))
+
   return (
     <div className="max-w-2xl mx-auto space-y-5">
       {/* Page Header */}
@@ -438,6 +445,38 @@ export default function WorkSubmit() {
         <h2 className="text-xl font-black">作業入力</h2>
         <p className="text-sm text-muted mt-0.5">作業内容を入力して提出します</p>
       </div>
+
+      {/* 今日の提出状況 */}
+      {todayRecords.length > 0 && (
+        <div className="bg-green-light/40 border border-green/20 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <ClipboardCheck className="w-4 h-4 text-green" />
+            <span className="text-sm font-bold text-ink">今日の提出状況</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mb-2">
+            <div className="text-center">
+              <div className="text-2xl font-black text-green font-mono">{todayRecords.length}</div>
+              <div className="text-[10px] text-muted">件提出済み</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-black text-mango-dark font-mono">¥{todayTotal.toLocaleString()}</div>
+              <div className="text-[10px] text-muted">合計金額</div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {todaySubmittedNames.map((name) => (
+              <span key={name} className="text-[10px] bg-green/15 text-green px-2 py-0.5 rounded-full font-bold">
+                {name}
+              </span>
+            ))}
+            {unsubmittedWorkers.map((w) => (
+              <span key={w.id} className="text-[10px] bg-cream text-muted px-2 py-0.5 rounded-full">
+                {w.name}（未提出）
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Master Data Change Banner */}
       <AnimatePresence>
