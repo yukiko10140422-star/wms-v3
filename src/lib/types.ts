@@ -46,6 +46,7 @@ export type WorkRecord = {
   hours: number
   timer_log: TimerLogEntry[]
   timer_work_ms: number
+  photos: string[]
   status: 'pending' | 'approved' | 'rejected'
   created_at: string
 }

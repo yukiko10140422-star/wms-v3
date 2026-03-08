@@ -9,6 +9,7 @@ import Timer from '../components/work/Timer'
 import TotalPanel from '../components/work/TotalPanel'
 import Button from '../components/ui/Button'
 import LiveDrafts from '../components/work/LiveDrafts'
+import PhotoAttach from '../components/work/PhotoAttach'
 import type { Worker, WorkItem, TimerLogEntry, Draft } from '../lib/types'
 
 const DRAFT_KEY = 'wms-worksubmit-draft'
@@ -84,6 +85,7 @@ export default function WorkSubmit() {
     timer_work_ms: number
     timer_log: TimerLogEntry[]
   } | null>(null)
+  const [photos, setPhotos] = useState<string[]>([])
   const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'done'>('idle')
   const [resetSignal, setResetSignal] = useState(0)
   const [importData, setImportData] = useState<{ quantities: Record<string, number>; hourlyHours: number } | null>(null)
@@ -316,6 +318,7 @@ export default function WorkSubmit() {
         hours: timerData?.hours ?? 0,
         timer_log: timerData?.timer_log ?? [],
         timer_work_ms: timerData?.timer_work_ms ?? 0,
+        photos: photos,
         status: 'pending',
       })
       if (!recordId) return
@@ -372,6 +375,7 @@ export default function WorkSubmit() {
     setItems([])
     setBaseTotal(0)
     setTimerData(null)
+    setPhotos([])
     setSubmitState('idle')
     setResetSignal((s) => s + 1)
     clearAllDrafts()
@@ -584,6 +588,11 @@ export default function WorkSubmit() {
           rows={3}
           className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:border-mango focus:outline-none focus:ring-2 focus:ring-mango/10 resize-y"
         />
+      </div>
+
+      {/* Photos */}
+      <div className="bg-white rounded-xl border border-border p-4">
+        <PhotoAttach photos={photos} onChange={setPhotos} />
       </div>
 
       {/* Total Panel */}

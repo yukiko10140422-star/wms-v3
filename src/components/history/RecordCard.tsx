@@ -148,6 +148,20 @@ export default function RecordCard({
                 </tbody>
               </table>
 
+              {record.photos && record.photos.length > 0 && (
+                <div className="flex gap-2 flex-wrap mb-3">
+                  {record.photos.map((photo, i) => (
+                    <img
+                      key={i}
+                      src={photo}
+                      alt={`写真${i + 1}`}
+                      className="w-16 h-16 rounded-lg object-cover border border-border cursor-pointer"
+                      onClick={() => window.open(photo, '_blank')}
+                    />
+                  ))}
+                </div>
+              )}
+
               {record.remarks && (
                 <div className="text-xs text-muted whitespace-pre-wrap mb-3">
                   備考：{record.remarks}
