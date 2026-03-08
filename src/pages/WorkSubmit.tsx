@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, RotateCcw } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import WorkerPicker from '../components/work/WorkerPicker'
 import ProcessList from '../components/work/ProcessList'
@@ -12,6 +12,7 @@ import LiveDrafts from '../components/work/LiveDrafts'
 import type { Worker, WorkItem, TimerLogEntry, Draft } from '../lib/types'
 
 const DRAFT_KEY = 'wms-worksubmit-draft'
+const LAST_SUBMIT_KEY = 'wms-last-submit'
 
 interface FormDraft {
   workerId: string | null
@@ -85,6 +86,14 @@ export default function WorkSubmit() {
   const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'done'>('idle')
   const [resetSignal, setResetSignal] = useState(0)
   const [importData, setImportData] = useState<{ quantities: Record<string, number>; hourlyHours: number } | null>(null)
+  const [submittedSummary, setSubmittedSummary] = useState<{
+    workerName: string
+    date: string
+    items: WorkItem[]
+    baseTotal: number
+    bonusAmt: number
+    total: number
+  } | null>(null)
 
   // マスタデータ変更検知用
   const [masterChanged, setMasterChanged] = useState(false)
@@ -311,26 +320,93 @@ export default function WorkSubmit() {
       setSubmitState('done')
       setMasterChanged(false)
 
-      // Reset form after brief delay
-      setTimeout(() => {
-        setSelectedWorker(null)
-        setWorkDate(new Date().toISOString().split('T')[0])
-        setAddress('')
-        setRemarks('')
-        setBonusOn(false)
-        setItems([])
-        setBaseTotal(0)
-        setTimerData(null)
-        setSubmitState('idle')
-        setResetSignal((s) => s + 1)
-        clearAllDrafts()
-        deleteDraftFromServer(deviceId)
-      }, 1500)
+      // 前回提出データをlocalStorageに保存
+      try {
+        localStorage.setItem(LAST_SUBMIT_KEY, JSON.stringify({
+          workerId: selectedWorker.id,
+          workerName: selectedWorker.name,
+          address,
+          bonusOn,
+          bonusRate,
+          quantities: (() => {
+            try {
+              const raw = localStorage.getItem('wms-quantities-draft')
+              return raw ? JSON.parse(raw) : {}
+            } catch { return {} }
+          })(),
+          hourlyHours: (() => {
+            try {
+              const raw = localStorage.getItem('wms-hourly-draft')
+              return raw ? parseFloat(raw) || 0 : 0
+            } catch { return 0 }
+          })(),
+        }))
+      } catch { /* ignore */ }
+
+      // 提出完了サマリーを表示
+      setSubmittedSummary({
+        workerName: selectedWorker.name,
+        date: workDate,
+        items: recalc.items,
+        baseTotal: finalBaseTotal,
+        bonusAmt: finalBonusAmt,
+        total: finalTotal,
+      })
     } catch {
       setSubmitState('idle')
       showToast('提出に失敗しました', 'error')
     }
   }
+
+  const handleDismissSummary = useCallback(() => {
+    setSubmittedSummary(null)
+    setSelectedWorker(null)
+    setWorkDate(new Date().toISOString().split('T')[0])
+    setAddress('')
+    setRemarks('')
+    setBonusOn(false)
+    setItems([])
+    setBaseTotal(0)
+    setTimerData(null)
+    setSubmitState('idle')
+    setResetSignal((s) => s + 1)
+    clearAllDrafts()
+    deleteDraftFromServer(deviceId)
+  }, [deleteDraftFromServer])
+
+  const hasLastSubmit = (() => {
+    try { return !!localStorage.getItem(LAST_SUBMIT_KEY) } catch { return false }
+  })()
+
+  const handleLoadLastSubmit = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(LAST_SUBMIT_KEY)
+      if (!raw) return
+      const last = JSON.parse(raw)
+
+      // 作業者を復元
+      if (last.workerId) {
+        const found = workers.find((w) => w.id === last.workerId)
+        if (found) {
+          setSelectedWorker(found)
+          setAddress(found.address || last.address || '')
+        }
+      }
+
+      setBonusOn(last.bonusOn ?? false)
+      setBonusRate(last.bonusRate ?? 10)
+
+      // 数量を復元
+      if (last.quantities || last.hourlyHours) {
+        setImportData({
+          quantities: last.quantities || {},
+          hourlyHours: last.hourlyHours || 0,
+        })
+      }
+
+      showToast('前回の入力内容を復元しました', 'success')
+    } catch { /* ignore */ }
+  }, [workers, showToast])
 
   const buttonText =
     submitState === 'submitting'
@@ -375,21 +451,21 @@ export default function WorkSubmit() {
         )}
       </AnimatePresence>
 
-      {/* Work Date */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-bold text-muted">作業日</label>
-        <input
-          type="date"
-          value={workDate}
-          onChange={(e) => setWorkDate(e.target.value)}
-          className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:border-mango focus:outline-none focus:ring-2 focus:ring-mango/10"
-        />
-      </div>
+      {/* 前回の入力を復元ボタン */}
+      {hasLastSubmit && !selectedWorker && items.length === 0 && (
+        <button
+          onClick={handleLoadLastSubmit}
+          className="w-full flex items-center justify-center gap-2 rounded-xl border border-mango/20 bg-mango-light/30 px-4 py-3 text-sm font-bold text-mango-dark hover:bg-mango-light/50 transition-colors cursor-pointer"
+        >
+          <RotateCcw className="w-4 h-4" />
+          前回と同じ内容で入力
+        </button>
+      )}
 
       {/* Live Drafts from other devices */}
       <LiveDrafts currentDeviceId={deviceId} onImportDraft={handleImportDraft} />
 
-      {/* Worker Picker */}
+      {/* Worker Picker - 最初に選択 */}
       <div className="space-y-1.5">
         <label className="text-xs font-bold text-muted">作業者</label>
         <WorkerPicker
@@ -399,16 +475,27 @@ export default function WorkSubmit() {
         />
       </div>
 
-      {/* Address */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-bold text-muted">住所</label>
-        <input
-          type="text"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="作業先の住所"
-          className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:border-mango focus:outline-none focus:ring-2 focus:ring-mango/10"
-        />
+      {/* Work Date & Address - 作業者選択後に表示 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-muted">作業日</label>
+          <input
+            type="date"
+            value={workDate}
+            onChange={(e) => setWorkDate(e.target.value)}
+            className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:border-mango focus:outline-none focus:ring-2 focus:ring-mango/10"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-muted">住所</label>
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="作業先の住所"
+            className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:border-mango focus:outline-none focus:ring-2 focus:ring-mango/10"
+          />
+        </div>
       </div>
 
       {/* Process List */}
@@ -463,6 +550,79 @@ export default function WorkSubmit() {
       >
         {!selectedWorker ? '作業者を選択してください' : buttonText}
       </Button>
+
+      {/* 提出完了確認モーダル */}
+      <AnimatePresence>
+        {submittedSummary && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+            onClick={handleDismissSummary}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', duration: 0.3 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-14 h-14 rounded-full bg-green-light flex items-center justify-center">
+                  <CheckCircle2 className="w-8 h-8 text-green" />
+                </div>
+                <h3 className="text-lg font-black text-ink">提出完了</h3>
+              </div>
+
+              <div className="bg-cream rounded-xl p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">作業者</span>
+                  <span className="font-bold text-ink">{submittedSummary.workerName}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">作業日</span>
+                  <span className="font-mono text-ink">{submittedSummary.date}</span>
+                </div>
+                <div className="border-t border-border my-1" />
+                {submittedSummary.items.map((item, i) => (
+                  <div key={i} className="flex justify-between text-xs text-ink/70">
+                    <span>{item.name}</span>
+                    <span className="font-mono">
+                      {item.qty} × ¥{item.price.toLocaleString()} = ¥{item.sub.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+                <div className="border-t border-border my-1" />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">小計</span>
+                  <span className="font-mono font-bold">¥{submittedSummary.baseTotal.toLocaleString()}</span>
+                </div>
+                {submittedSummary.bonusAmt > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted">ボーナス</span>
+                    <span className="font-mono font-bold text-green">+¥{submittedSummary.bonusAmt.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-base font-black">
+                  <span>合計</span>
+                  <span className="text-mango-dark font-mono">¥{submittedSummary.total.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                onClick={handleDismissSummary}
+              >
+                確認しました
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
