@@ -152,7 +152,8 @@ export default function App() {
           workerAvatar={loggedInWorker?.avatar}
         />
 
-        <main className="flex-1 min-h-screen pb-20 lg:pb-0">
+        <main className="flex-1 min-h-screen lg:pb-0"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
           <div className="max-w-3xl mx-auto px-4 py-6 lg:px-8 lg:py-8">
             {renderPage()}
           </div>

@@ -51,7 +51,8 @@ export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onO
           >
             <div className="absolute inset-0 bg-black/30" onClick={() => setShowAdminMenu(false)} />
             <motion.div
-              className="absolute bottom-16 left-0 right-0 bg-white rounded-t-2xl shadow-2xl p-4 pb-6"
+              className="absolute bottom-16 left-0 right-0 bg-white rounded-t-2xl shadow-2xl p-4"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)', bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -113,7 +114,8 @@ export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onO
       </AnimatePresence>
 
       {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 lg:hidden bg-white border-t border-border shadow-lg z-30">
+      <nav className="fixed bottom-0 left-0 right-0 lg:hidden bg-white border-t border-border shadow-lg z-30"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-center justify-around h-16">
           {mainItems.map((item) => {
             const Icon = item.icon

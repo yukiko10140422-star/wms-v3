@@ -78,7 +78,8 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
   }, [selectedWorkerId, handlePinDigit, handleBackspace, handleBack])
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-start px-4 py-8">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-start px-4 py-8"
+      style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 32px)' }}>
       {/* Branding */}
       <div className="flex items-center gap-3 mb-10">
         <span className="text-3xl">🥭</span>
