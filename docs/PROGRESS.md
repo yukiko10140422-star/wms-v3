@@ -179,7 +179,7 @@
 | WorkSubmit適応 | 完了 | main | WorkerPicker除去、自動設定 |
 | 請求書フォーマット変更 | 完了 | main | 支払元固定、請求者=提出者 |
 | アップデート通知v3.0 | 完了 | main | 新機能一覧 |
-| pin/typeカラム追加 | 待機 | - | Supabase SQLエディタで実行必要 |
+| pin/typeカラム追加 | 完了 | main | pg直接接続で実行済み |
 
 ---
 

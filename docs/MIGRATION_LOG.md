@@ -66,11 +66,51 @@
 | `bankHolder` | `bank_holder` |
 | `adminPw` | `admin_pw` |
 
+## DB接続方法（CLIからのSQL実行）
+
+`.env` から接続情報を読み取り、`pg` パッケージで直接接続する。
+
+```bash
+# Node.js で実行（pg パッケージが必要）
+node -e "
+const { Pool } = require('pg');
+const pool = new Pool({
+  host: 'db.bixiuvzcaosmefphttbe.supabase.co',
+  port: 5432,
+  user: 'postgres',
+  password: process.env.DB_PASSWORD || '.envのDB_PASSWORDを参照',
+  database: 'postgres',
+  ssl: { rejectUnauthorized: false }
+});
+(async () => {
+  const { rows } = await pool.query('SELECT * FROM workers LIMIT 5');
+  console.log(rows);
+  await pool.end();
+})();
+"
+```
+
+### 環境変数（.env）
+| 変数名 | 用途 |
+| --- | --- |
+| `VITE_SUPABASE_URL` | Supabase REST API URL（フロントエンド用） |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon key（フロントエンド用） |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key（管理操作用、フロントエンドでは不使用） |
+| `DB_PASSWORD` | PostgreSQL直接接続のパスワード |
+
+### 実行済み移行
+
+| 日付 | ファイル | 内容 |
+| --- | --- | --- |
+| 2026-03-08 | (初期) | テーブル作成 + データ移行 |
+| 2026-03-08 | migration_drafts.sql | draftsテーブル追加 |
+| 2026-03-08 | migration_phase8.sql | workers.pin, shifts.type, shifts.reason 追加 |
+
 ## セキュリティ
 
-- `.env` に機密情報を保管
+- `.env` に機密情報を保管（DB_PASSWORD, API keys）
 - `.gitignore` で `.env` と `jsonbin_backup.json` を除外
-- git pushは行わない
+- git pushは行わない（明示的な指示がある場合のみ）
 
 ## 次のステップ
 
