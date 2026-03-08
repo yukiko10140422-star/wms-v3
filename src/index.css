@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/* DEPT-3 デザイン部がカスタマイズする */
+@theme {
+  --color-mango: #ff8c00;
+  --color-mango-light: #fff3e0;
+  --color-mango-dark: #e65c00;
+  --color-yellow: #ffc107;
+  --color-yellow-light: #fffde7;
+  --color-background: #fff8f0;
+  --color-white: #ffffff;
+  --color-ink: #2d1a00;
+  --color-muted: #8a6a40;
+  --color-border: #f0d9b5;
+  --color-border-dark: #e0b87a;
+  --color-green: #2e7d32;
+  --color-green-light: #e8f5e9;
+  --color-red: #c62828;
+  --color-red-light: #ffebee;
+  --font-sans: 'Noto Sans JP', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}

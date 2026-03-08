@@ -1,0 +1,369 @@
+import { create } from 'zustand'
+import { supabase } from '../lib/supabase'
+import type { RealtimeChannel } from '@supabase/supabase-js'
+import type { Worker, Process, WorkRecord, Shift, Settings } from '../lib/types'
+
+type SyncStatus = 'idle' | 'loading' | 'ok' | 'error'
+type ToastType = 'success' | 'error' | 'info'
+
+interface Toast {
+  message: string
+  type: ToastType
+}
+
+interface StoreState {
+  workers: Worker[]
+  processes: Process[]
+  records: WorkRecord[]
+  shifts: Shift[]
+  settings: Settings | null
+  syncStatus: SyncStatus
+  isOnline: boolean
+  adminUnlocked: boolean
+  toast: Toast | null
+  _realtimeChannel: RealtimeChannel | null
+
+  fetchAll: () => Promise<void>
+  subscribeRealtime: () => void
+  unsubscribeRealtime: () => void
+  unlockAdmin: (password: string) => boolean
+
+  addRecord: (record: Omit<WorkRecord, 'id' | 'created_at'>) => Promise<void>
+  updateRecordStatus: (id: number, status: WorkRecord['status']) => Promise<void>
+  deleteRecord: (id: number) => Promise<void>
+
+  addWorker: (worker: Omit<Worker, 'id'>) => Promise<void>
+  updateWorker: (id: string, data: Partial<Worker>) => Promise<void>
+  deleteWorker: (id: string) => Promise<void>
+
+  addProcess: (process: Omit<Process, 'id' | 'sort_order'>) => Promise<void>
+  updateProcess: (id: string, data: Partial<Process>) => Promise<void>
+  deleteProcess: (id: string) => Promise<void>
+  reorderProcesses: (ids: string[]) => Promise<void>
+
+  addShift: (shift: Omit<Shift, 'id'>) => Promise<void>
+  updateShiftStatus: (id: number, status: Shift['status']) => Promise<void>
+  deleteShift: (id: number) => Promise<void>
+
+  updateSettings: (data: Partial<Settings>) => Promise<void>
+  showToast: (message: string, type: ToastType) => void
+}
+
+export const useStore = create<StoreState>((set, get) => ({
+  workers: [],
+  processes: [],
+  records: [],
+  shifts: [],
+  settings: null,
+  syncStatus: 'idle',
+  isOnline: navigator.onLine,
+  adminUnlocked: false,
+  toast: null,
+  _realtimeChannel: null,
+
+  subscribeRealtime: () => {
+    // 既存チャンネルがあれば解除
+    const existing = get()._realtimeChannel
+    if (existing) {
+      supabase.removeChannel(existing)
+    }
+
+    const channel = supabase
+      .channel('wms-realtime')
+      // Workers
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'workers' }, (payload) => {
+        const newWorker = payload.new as Worker
+        set((s) => {
+          if (s.workers.some((w) => w.id === newWorker.id)) return s
+          return { workers: [...s.workers, newWorker] }
+        })
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'workers' }, (payload) => {
+        const updated = payload.new as Worker
+        set((s) => ({
+          workers: s.workers.map((w) => (w.id === updated.id ? updated : w)),
+        }))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'workers' }, (payload) => {
+        const deletedId = (payload.old as { id: string }).id
+        set((s) => ({ workers: s.workers.filter((w) => w.id !== deletedId) }))
+      })
+      // Processes
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'processes' }, (payload) => {
+        const newProcess = payload.new as Process
+        set((s) => {
+          if (s.processes.some((p) => p.id === newProcess.id)) return s
+          return { processes: [...s.processes, newProcess].sort((a, b) => a.sort_order - b.sort_order) }
+        })
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'processes' }, (payload) => {
+        const updated = payload.new as Process
+        set((s) => ({
+          processes: s.processes.map((p) => (p.id === updated.id ? updated : p)).sort((a, b) => a.sort_order - b.sort_order),
+        }))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'processes' }, (payload) => {
+        const deletedId = (payload.old as { id: string }).id
+        set((s) => ({ processes: s.processes.filter((p) => p.id !== deletedId) }))
+      })
+      // Records
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'records' }, (payload) => {
+        const newRecord = payload.new as WorkRecord
+        set((s) => {
+          if (s.records.some((r) => r.id === newRecord.id)) return s
+          return { records: [newRecord, ...s.records] }
+        })
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'records' }, (payload) => {
+        const updated = payload.new as WorkRecord
+        set((s) => ({
+          records: s.records.map((r) => (r.id === updated.id ? updated : r)),
+        }))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'records' }, (payload) => {
+        const deletedId = (payload.old as { id: number }).id
+        set((s) => ({ records: s.records.filter((r) => r.id !== deletedId) }))
+      })
+      // Shifts
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shifts' }, (payload) => {
+        const newShift = payload.new as Shift
+        set((s) => {
+          if (s.shifts.some((sh) => sh.id === newShift.id)) return s
+          return { shifts: [newShift, ...s.shifts] }
+        })
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'shifts' }, (payload) => {
+        const updated = payload.new as Shift
+        set((s) => ({
+          shifts: s.shifts.map((sh) => (sh.id === updated.id ? updated : sh)),
+        }))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'shifts' }, (payload) => {
+        const deletedId = (payload.old as { id: number }).id
+        set((s) => ({ shifts: s.shifts.filter((sh) => sh.id !== deletedId) }))
+      })
+      // Settings
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'settings' }, (payload) => {
+        set({ settings: payload.new as Settings })
+      })
+      .subscribe()
+
+    set({ _realtimeChannel: channel })
+  },
+
+  unsubscribeRealtime: () => {
+    const channel = get()._realtimeChannel
+    if (channel) {
+      supabase.removeChannel(channel)
+      set({ _realtimeChannel: null })
+    }
+  },
+
+  fetchAll: async () => {
+    set({ syncStatus: 'loading' })
+    try {
+      const [wRes, pRes, rRes, shRes, stRes] = await Promise.all([
+        supabase.from('workers').select('*'),
+        supabase.from('processes').select('*').order('sort_order'),
+        supabase.from('records').select('*').order('id', { ascending: false }),
+        supabase.from('shifts').select('*').order('id', { ascending: false }),
+        supabase.from('settings').select('*').eq('id', 1).single(),
+      ])
+
+      if (wRes.error) throw wRes.error
+      if (pRes.error) throw pRes.error
+      if (rRes.error) throw rRes.error
+      if (shRes.error) throw shRes.error
+      if (stRes.error) throw stRes.error
+
+      set({
+        workers: wRes.data as Worker[],
+        processes: pRes.data as Process[],
+        records: rRes.data as WorkRecord[],
+        shifts: shRes.data as Shift[],
+        settings: stRes.data as Settings,
+        syncStatus: 'ok',
+      })
+    } catch {
+      set({ syncStatus: 'error' })
+    }
+  },
+
+  unlockAdmin: (password: string) => {
+    const { settings } = get()
+    if (settings && settings.admin_pw === password) {
+      set({ adminUnlocked: true })
+      return true
+    }
+    return false
+  },
+
+  // Records
+  addRecord: async (record) => {
+    const newRecord = { ...record, id: Date.now(), created_at: new Date().toISOString() }
+    const { error } = await supabase.from('records').insert(newRecord)
+    if (error) {
+      get().showToast('記録の追加に失敗しました', 'error')
+      return
+    }
+    set((s) => ({ records: [newRecord as WorkRecord, ...s.records] }))
+    get().showToast('記録を追加しました', 'success')
+  },
+
+  updateRecordStatus: async (id, status) => {
+    const { error } = await supabase.from('records').update({ status }).eq('id', id)
+    if (error) {
+      get().showToast('ステータス更新に失敗しました', 'error')
+      return
+    }
+    set((s) => ({
+      records: s.records.map((r) => (r.id === id ? { ...r, status } : r)),
+    }))
+  },
+
+  deleteRecord: async (id) => {
+    const { error } = await supabase.from('records').delete().eq('id', id)
+    if (error) {
+      get().showToast('記録の削除に失敗しました', 'error')
+      return
+    }
+    set((s) => ({ records: s.records.filter((r) => r.id !== id) }))
+    get().showToast('記録を削除しました', 'success')
+  },
+
+  // Workers
+  addWorker: async (worker) => {
+    const newWorker: Worker = { ...worker, id: 'w' + Date.now() }
+    const { error } = await supabase.from('workers').insert(newWorker)
+    if (error) {
+      get().showToast('作業者の追加に失敗しました', 'error')
+      return
+    }
+    set((s) => ({ workers: [...s.workers, newWorker] }))
+    get().showToast('作業者を追加しました', 'success')
+  },
+
+  updateWorker: async (id, data) => {
+    const { error } = await supabase.from('workers').update(data).eq('id', id)
+    if (error) {
+      get().showToast('作業者の更新に失敗しました', 'error')
+      return
+    }
+    set((s) => ({
+      workers: s.workers.map((w) => (w.id === id ? { ...w, ...data } : w)),
+    }))
+    get().showToast('作業者を更新しました', 'success')
+  },
+
+  deleteWorker: async (id) => {
+    const { error } = await supabase.from('workers').delete().eq('id', id)
+    if (error) {
+      get().showToast('作業者の削除に失敗しました', 'error')
+      return
+    }
+    set((s) => ({ workers: s.workers.filter((w) => w.id !== id) }))
+    get().showToast('作業者を削除しました', 'success')
+  },
+
+  // Processes
+  addProcess: async (process) => {
+    const { processes } = get()
+    const sort_order = processes.length
+    const newProcess: Process = { ...process, id: 'c' + Date.now(), sort_order }
+    const { error } = await supabase.from('processes').insert(newProcess)
+    if (error) {
+      get().showToast('工程の追加に失敗しました', 'error')
+      return
+    }
+    set((s) => ({ processes: [...s.processes, newProcess] }))
+    get().showToast('工程を追加しました', 'success')
+  },
+
+  updateProcess: async (id, data) => {
+    const { error } = await supabase.from('processes').update(data).eq('id', id)
+    if (error) {
+      get().showToast('工程の更新に失敗しました', 'error')
+      return
+    }
+    set((s) => ({
+      processes: s.processes.map((p) => (p.id === id ? { ...p, ...data } : p)),
+    }))
+    get().showToast('工程を更新しました', 'success')
+  },
+
+  deleteProcess: async (id) => {
+    const { error } = await supabase.from('processes').delete().eq('id', id)
+    if (error) {
+      get().showToast('工程の削除に失敗しました', 'error')
+      return
+    }
+    set((s) => ({ processes: s.processes.filter((p) => p.id !== id) }))
+    get().showToast('工程を削除しました', 'success')
+  },
+
+  reorderProcesses: async (ids) => {
+    const updates = ids.map((id, i) =>
+      supabase.from('processes').update({ sort_order: i }).eq('id', id)
+    )
+    await Promise.all(updates)
+    const { data, error } = await supabase
+      .from('processes')
+      .select('*')
+      .order('sort_order')
+    if (!error && data) {
+      set({ processes: data as Process[] })
+    }
+  },
+
+  // Shifts
+  addShift: async (shift) => {
+    const newShift: Shift = { ...shift, id: Date.now() }
+    const { error } = await supabase.from('shifts').insert(newShift)
+    if (error) {
+      get().showToast('シフトの追加に失敗しました', 'error')
+      return
+    }
+    set((s) => ({ shifts: [newShift, ...s.shifts] }))
+    get().showToast('シフトを提出しました', 'success')
+  },
+
+  updateShiftStatus: async (id, status) => {
+    const { error } = await supabase.from('shifts').update({ status }).eq('id', id)
+    if (error) {
+      get().showToast('シフトステータス更新に失敗しました', 'error')
+      return
+    }
+    set((s) => ({
+      shifts: s.shifts.map((sh) => (sh.id === id ? { ...sh, status } : sh)),
+    }))
+  },
+
+  deleteShift: async (id) => {
+    const { error } = await supabase.from('shifts').delete().eq('id', id)
+    if (error) {
+      get().showToast('シフトの削除に失敗しました', 'error')
+      return
+    }
+    set((s) => ({ shifts: s.shifts.filter((sh) => sh.id !== id) }))
+    get().showToast('シフトを削除しました', 'success')
+  },
+
+  // Settings
+  updateSettings: async (data) => {
+    const { error } = await supabase.from('settings').update(data).eq('id', 1)
+    if (error) {
+      get().showToast('設定の更新に失敗しました', 'error')
+      return
+    }
+    set((s) => ({
+      settings: s.settings ? { ...s.settings, ...data } : null,
+    }))
+    get().showToast('設定を更新しました', 'success')
+  },
+
+  // Toast
+  showToast: (message, type) => {
+    set({ toast: { message, type } })
+    setTimeout(() => set({ toast: null }), 3000)
+  },
+}))
