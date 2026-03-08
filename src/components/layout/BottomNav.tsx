@@ -51,8 +51,7 @@ export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onO
           >
             <div className="absolute inset-0 bg-black/30" onClick={() => setShowAdminMenu(false)} />
             <motion.div
-              className="absolute left-0 right-0 bg-white rounded-t-2xl shadow-2xl p-4 pb-8 safe-bottom"
-              style={{ bottom: '100%' }}
+              className="absolute left-0 right-0 bottom-0 bg-white rounded-t-2xl shadow-2xl p-4 pb-24 safe-bottom"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
