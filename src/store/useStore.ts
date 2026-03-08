@@ -242,6 +242,15 @@ export const useStore = create<StoreState>((set, get) => ({
     const { data, error } = await supabase.from('drafts').select('*')
     if (!error && data) {
       set({ drafts: data as Draft[], _draftsAvailable: true })
+
+      // 48時間以上更新のないドラフトをDBから自動削除
+      const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+      const stale = data.filter((d: Draft) => d.updated_at < cutoff)
+      if (stale.length > 0) {
+        const staleIds = stale.map((d: Draft) => d.id)
+        await supabase.from('drafts').delete().in('id', staleIds)
+        set((s) => ({ drafts: s.drafts.filter((d) => !staleIds.includes(d.id)) }))
+      }
     }
     // テーブルがなければ静かに無視（_draftsAvailable = false のまま）
   },
