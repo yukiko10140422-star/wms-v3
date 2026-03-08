@@ -71,24 +71,48 @@ export default function MySalary() {
     )
   }
 
+  // 月選択のUI用
+  const [monthY, monthM] = month.split('-')
+  const handleMonthPrev = () => {
+    const m = parseInt(monthM)
+    const y = parseInt(monthY)
+    if (m === 1) setMonth(`${y - 1}-12`)
+    else setMonth(`${y}-${String(m - 1).padStart(2, '0')}`)
+  }
+  const handleMonthNext = () => {
+    const m = parseInt(monthM)
+    const y = parseInt(monthY)
+    if (m === 12) setMonth(`${y + 1}-01`)
+    else setMonth(`${y}-${String(m + 1).padStart(2, '0')}`)
+  }
+
   return (
-    <div className="overflow-hidden">
+    <div className="w-full max-w-full overflow-x-hidden">
       {/* Header */}
       <div className="mb-6">
-        <div className="mb-3">
-          <h2 className="text-xl font-black text-ink">給与明細</h2>
-          <p className="text-sm text-muted mt-1">
-            {loggedInWorker.name}さんの月別作業記録
-          </p>
-        </div>
+        <h2 className="text-xl font-black text-ink">給与明細</h2>
+        <p className="text-sm text-muted mt-1 mb-4">
+          {loggedInWorker.name}さんの月別作業記録
+        </p>
 
         <div className="flex items-center gap-2">
-          <input
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="flex-1 min-w-0 px-3 py-2 border border-border rounded-lg text-sm focus:border-mango focus:ring-2 focus:ring-mango/10 outline-none"
-          />
+          <button
+            type="button"
+            onClick={handleMonthPrev}
+            className="w-9 h-9 flex items-center justify-center rounded-lg border border-border text-muted hover:bg-mango-light transition-colors cursor-pointer shrink-0"
+          >
+            <ChevronDown className="w-4 h-4 rotate-90" />
+          </button>
+          <div className="flex-1 text-center font-bold text-ink text-base">
+            {parseInt(monthY)}年{parseInt(monthM)}月
+          </div>
+          <button
+            type="button"
+            onClick={handleMonthNext}
+            className="w-9 h-9 flex items-center justify-center rounded-lg border border-border text-muted hover:bg-mango-light transition-colors cursor-pointer shrink-0"
+          >
+            <ChevronDown className="w-4 h-4 -rotate-90" />
+          </button>
           {filteredRecords.length > 0 && settings && (
             <button
               onClick={() => setShowPrint(true)}
@@ -103,12 +127,12 @@ export default function MySalary() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="bg-white rounded-xl p-4 border border-border">
+        <div className="bg-white rounded-xl p-4 border border-border overflow-hidden">
           <div className="flex items-center gap-2 text-muted text-xs font-bold mb-1">
-            <Wallet className="w-4 h-4 text-mango" />
+            <Wallet className="w-4 h-4 text-mango shrink-0" />
             合計金額
           </div>
-          <div className="text-2xl font-black text-mango">
+          <div className="text-xl sm:text-2xl font-black text-mango truncate">
             &yen;{approvedTotal.toLocaleString()}
           </div>
         </div>
