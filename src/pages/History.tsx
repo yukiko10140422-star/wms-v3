@@ -23,6 +23,7 @@ export default function History() {
   const [filterStatus, setFilterStatus] = useState('')
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'total-desc' | 'total-asc'>('date-desc')
   const [showPrint, setShowPrint] = useState(false)
+  const [printRecords, setPrintRecords] = useState<typeof records | null>(null)
 
   const workerNames = useMemo(
     () => [...new Set(records.map((r) => r.worker_name))],
@@ -71,9 +72,13 @@ export default function History() {
 
   const handlePrint = useCallback(
     (id: number) => {
-      setShowPrint(true)
+      const record = records.find((r) => r.id === id)
+      if (record) {
+        setPrintRecords([record])
+        setShowPrint(true)
+      }
     },
-    []
+    [records]
   )
 
   const handleOpenPrintPreview = () => {
@@ -89,6 +94,7 @@ export default function History() {
       showToast('対象の記録がありません', 'error')
       return
     }
+    setPrintRecords(filteredRecords)
     setShowPrint(true)
   }
 
@@ -136,10 +142,13 @@ export default function History() {
   }
 
   const printTitle = useMemo(() => {
+    if (printRecords && printRecords.length === 1 && !filterMonth) {
+      return printRecords[0].date
+    }
     if (!filterMonth) return ''
     const [y, m] = filterMonth.split('-')
     return `${y}年${parseInt(m)}月分`
-  }, [filterMonth])
+  }, [filterMonth, printRecords])
 
   return (
     <div>
@@ -239,13 +248,13 @@ export default function History() {
       />
 
       {/* Print Preview */}
-      {showPrint && settings && (
+      {showPrint && settings && printRecords && (
         <PaymentDoc
-          records={filteredRecords}
+          records={printRecords}
           settings={settings}
           workers={workers}
           title={printTitle}
-          onClose={() => setShowPrint(false)}
+          onClose={() => { setShowPrint(false); setPrintRecords(null) }}
         />
       )}
     </div>
