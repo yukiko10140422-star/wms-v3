@@ -72,27 +72,27 @@ export default function MySalary() {
   }
 
   return (
-    <div>
+    <div className="overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
-        <div>
+      <div className="mb-6">
+        <div className="mb-3">
           <h2 className="text-xl font-black text-ink">給与明細</h2>
           <p className="text-sm text-muted mt-1">
             {loggedInWorker.name}さんの月別作業記録
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <input
             type="month"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-            className="px-3 py-2 border border-border rounded-lg text-sm focus:border-mango focus:ring-2 focus:ring-mango/10 outline-none"
+            className="flex-1 min-w-0 px-3 py-2 border border-border rounded-lg text-sm focus:border-mango focus:ring-2 focus:ring-mango/10 outline-none"
           />
           {filteredRecords.length > 0 && settings && (
             <button
               onClick={() => setShowPrint(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-mango text-white rounded-lg text-sm font-bold hover:bg-mango-dark transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-mango text-white rounded-lg text-sm font-bold hover:bg-mango-dark transition-colors shrink-0"
             >
               <FileText className="w-4 h-4" />
               請求書
@@ -212,9 +212,9 @@ export default function MySalary() {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="px-4 pb-4 border-t border-border pt-3">
+                      <div className="px-4 pb-4 border-t border-border pt-3 overflow-x-auto">
                         {/* Item Table */}
-                        <table className="w-full text-sm mb-3">
+                        <table className="w-full text-sm mb-3 min-w-0">
                           <thead>
                             <tr className="text-xs text-muted border-b border-border">
                               <th className="text-left py-1 font-bold">
