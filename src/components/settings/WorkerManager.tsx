@@ -106,7 +106,7 @@ export default function WorkerManager({
     }
 
     setSaving(true)
-    const data = {
+    const base = {
       name: name.trim(),
       address: address.trim(),
       avatar,
@@ -115,13 +115,14 @@ export default function WorkerManager({
       bank_type: bankType,
       bank_number: bankNumber.trim(),
       bank_holder: bankHolder.trim(),
-      pin: null,
     }
 
     if (editingId) {
-      await onUpdate(editingId, data)
+      // 編集時はPINを変更しない（既存PINを保持）
+      await onUpdate(editingId, base)
     } else {
-      await onAdd(data)
+      // 新規追加時はPIN未設定
+      await onAdd({ ...base, pin: null })
     }
     setSaving(false)
     setModalOpen(false)

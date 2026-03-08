@@ -39,9 +39,14 @@ export default function App() {
   const { theme, setTheme } = useTheme()
 
   useEffect(() => {
-    fetchAll().then(() => {
-      restoreWorkerSession()
-    })
+    fetchAll()
+      .then(() => {
+        restoreWorkerSession()
+      })
+      .catch(() => {
+        // fetchAll失敗時もセッション読み込み完了とし、ログイン画面を表示
+        restoreWorkerSession()
+      })
     subscribeRealtime()
     return () => unsubscribeRealtime()
   }, [fetchAll, subscribeRealtime, unsubscribeRealtime, restoreWorkerSession])

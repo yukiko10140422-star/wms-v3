@@ -272,6 +272,12 @@ export const useStore = create<StoreState>((set, get) => ({
   logoutWorker: () => {
     set({ loggedInWorker: null })
     localStorage.removeItem('wms-worker-session')
+    // 下書きデータをクリア（他ユーザーへのデータ漏洩防止）
+    localStorage.removeItem('wms-worksubmit-draft')
+    localStorage.removeItem('wms-quantities-draft')
+    localStorage.removeItem('wms-hourly-draft')
+    localStorage.removeItem('wms-timer-draft')
+    localStorage.removeItem('wms-last-submit')
   },
 
   restoreWorkerSession: () => {
@@ -368,6 +374,15 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   deleteWorker: async (id) => {
+    // レコードが存在する作業者は削除不可
+    const worker = get().workers.find((w) => w.id === id)
+    if (worker) {
+      const hasRecords = get().records.some((r) => r.worker_name === worker.name)
+      if (hasRecords) {
+        get().showToast('作業記録がある作業者は削除できません', 'error')
+        return
+      }
+    }
     const { error } = await supabase.from('workers').delete().eq('id', id)
     if (error) {
       get().showToast('作業者の削除に失敗しました', 'error')
