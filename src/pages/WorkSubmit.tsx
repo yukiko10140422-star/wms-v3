@@ -8,6 +8,7 @@ import BonusToggle from '../components/work/BonusToggle'
 import Timer from '../components/work/Timer'
 import TotalPanel from '../components/work/TotalPanel'
 import Button from '../components/ui/Button'
+import LiveDrafts from '../components/work/LiveDrafts'
 import type { Worker, WorkItem, TimerLogEntry } from '../lib/types'
 
 const DRAFT_KEY = 'wms-worksubmit-draft'
@@ -352,6 +353,9 @@ export default function WorkSubmit() {
           className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:border-mango focus:outline-none focus:ring-2 focus:ring-mango/10"
         />
       </div>
+
+      {/* Live Drafts from other devices */}
+      <LiveDrafts currentDeviceId={deviceId} />
 
       {/* Worker Picker */}
       <div className="space-y-1.5">
