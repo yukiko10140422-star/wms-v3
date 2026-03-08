@@ -279,7 +279,7 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   logoutWorker: () => {
-    set({ loggedInWorker: null })
+    set({ loggedInWorker: null, adminUnlocked: false })
     localStorage.removeItem('wms-worker-session')
     // 下書きデータをクリア（他ユーザーへのデータ漏洩防止）
     localStorage.removeItem('wms-worksubmit-draft')

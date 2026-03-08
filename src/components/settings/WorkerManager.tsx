@@ -63,6 +63,7 @@ export default function WorkerManager({
   const [bankType, setBankType] = useState('普通')
   const [bankNumber, setBankNumber] = useState('')
   const [bankHolder, setBankHolder] = useState('')
+  const [pinCode, setPinCode] = useState('')
   const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -71,6 +72,7 @@ export default function WorkerManager({
     setName('')
     setAddress('')
     setAvatar('')
+    setPinCode('')
     setBankName('')
     setBankBranch('')
     setBankType('普通')
@@ -84,6 +86,7 @@ export default function WorkerManager({
     setName(w.name)
     setAddress(w.address || '')
     setAvatar(w.avatar || '')
+    setPinCode('')
     setBankName(w.bank_name || '')
     setBankBranch(w.bank_branch || '')
     setBankType(w.bank_type || '普通')
@@ -105,6 +108,18 @@ export default function WorkerManager({
       return
     }
 
+    // 新規作成時はPIN必須
+    if (!editingId && !/^\d{4}$/.test(pinCode)) {
+      alert('4桁のPINを設定してください')
+      return
+    }
+
+    // 編集時にPINが入力されている場合は4桁チェック
+    if (editingId && pinCode && !/^\d{4}$/.test(pinCode)) {
+      alert('PINは4桁の数字で入力してください')
+      return
+    }
+
     setSaving(true)
     const base = {
       name: name.trim(),
@@ -118,11 +133,12 @@ export default function WorkerManager({
     }
 
     if (editingId) {
-      // 編集時はPINを変更しない（既存PINを保持）
-      await onUpdate(editingId, base)
+      // 編集時: PINが入力されていれば更新、空なら既存PINを保持
+      const updateData = pinCode ? { ...base, pin: pinCode } : base
+      await onUpdate(editingId, updateData)
     } else {
-      // 新規追加時はPIN未設定
-      await onAdd({ ...base, pin: null })
+      // 新規追加時: PIN必須
+      await onAdd({ ...base, pin: pinCode })
     }
     setSaving(false)
     setModalOpen(false)
@@ -171,6 +187,9 @@ export default function WorkerManager({
               <div className="font-bold text-sm">{w.name}</div>
               {w.address && (
                 <div className="text-xs text-muted">{w.address}</div>
+              )}
+              {(!w.pin || w.pin === '') && (
+                <div className="text-[10px] text-red font-bold mt-1">PIN未設定</div>
               )}
               {w.bank_name ? (
                 <div className="text-[10px] text-mango mt-1">
@@ -251,6 +270,25 @@ export default function WorkerManager({
                 className="px-3 py-2 border border-border rounded-lg text-sm focus:border-mango outline-none"
               />
             </div>
+          </div>
+        </div>
+
+        {/* PIN設定 */}
+        <div className="mb-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-muted">
+              ログインPIN（4桁）{!editingId && <span className="text-red">*必須</span>}
+            </label>
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={4}
+              value={pinCode}
+              onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}
+              placeholder={editingId ? '変更する場合のみ入力' : '4桁の数字'}
+              className="px-3 py-2 border border-border rounded-lg text-sm text-center tracking-[0.5em] font-mono focus:border-mango outline-none"
+            />
           </div>
         </div>
 
