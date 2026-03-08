@@ -9,6 +9,9 @@ import {
   CalendarDays,
   Shield,
   FileText,
+  LogIn,
+  Wallet,
+  User,
 } from 'lucide-react'
 
 interface UsageGuideProps {
@@ -24,14 +27,26 @@ interface GuideSection {
 
 const sections: GuideSection[] = [
   {
+    icon: <LogIn className="w-5 h-5 text-mango" />,
+    title: 'ログイン',
+    steps: [
+      '自分の名前をタップします',
+      '4桁のPINを入力します（初期値は1234）',
+      'PINはマイページから変更できます',
+      'キーボードでも数字入力できます（PCの場合）',
+    ],
+  },
+  {
     icon: <ClipboardList className="w-5 h-5 text-mango" />,
     title: '作業入力の流れ',
     steps: [
-      '作業日を選択します',
-      '作業者を選択します（チップをタップ）',
+      '作業日と住所を確認します（自動入力済み）',
       '梱包オプションの数量を入力します',
       '必要に応じてボーナス上乗せをONにします',
+      '写真を最大3枚まで添付できます',
       '「提出する」ボタンで送信します',
+      '提出直後なら「取り消す」ことができます',
+      '消しゴムボタンで入力内容をリセットできます',
     ],
   },
   {
@@ -63,21 +78,43 @@ const sections: GuideSection[] = [
   },
   {
     icon: <Save className="w-5 h-5 text-mango" />,
-    title: '自動保存について',
+    title: '自動保存・オフライン',
     steps: [
       '入力中のデータは自動でスマホに保存されます',
       'タブを切り替えたり、画面が消えても安心です',
       '提出が完了すると自動的にクリアされます',
+      '圏外でも提出できます（接続時に自動送信）',
       'タイマーのデータは24時間後に自動で消えます',
     ],
   },
   {
     icon: <CalendarDays className="w-5 h-5 text-mango" />,
-    title: 'シフト希望',
+    title: 'シフト・欠勤届',
     steps: [
       '画面下の「シフト」タブを選択します',
-      'カレンダーから出勤希望日をタップして選択します',
-      '「提出する」ボタンで送信します',
+      '「シフト希望」タブからカレンダーで出勤日を選んで提出',
+      '「提出済み」タブで提出内容の確認・変更・取り消しができます',
+      '「欠勤届」タブからお休みの届出と理由を提出できます',
+      '「カレンダー」タブでシフト予定・出勤実績・欠勤が一覧できます',
+    ],
+  },
+  {
+    icon: <Wallet className="w-5 h-5 text-mango" />,
+    title: '給料明細',
+    steps: [
+      '画面下の「給料」タブを選択します',
+      '月を選ぶと承認済みの合計・日数・保留件数が見えます',
+      '各記録をタップすると加工の内訳が確認できます',
+      '「請求書」ボタンで請求書を印刷・PDF保存できます',
+    ],
+  },
+  {
+    icon: <User className="w-5 h-5 text-mango" />,
+    title: 'マイページ',
+    steps: [
+      '画面下の「マイページ」タブを選択します',
+      'PINの変更ができます',
+      'ログアウトはここから行います',
     ],
   },
   {
@@ -87,14 +124,16 @@ const sections: GuideSection[] = [
       '画面下の「管理者」タブをタップします',
       'パスワードを入力してロック解除します',
       '履歴・明細、シフト管理、設定にアクセスできます',
+      'ログイン画面の「管理者としてログイン」からもアクセス可能です',
     ],
   },
   {
     icon: <FileText className="w-5 h-5 text-mango" />,
-    title: '履歴・明細（管理者）',
+    title: '履歴・請求書（管理者）',
     steps: [
-      '作業者・月で絞り込みができます',
-      '明細書の印刷・PDF出力が可能です',
+      '作業者・月・ステータスで絞り込みができます',
+      '日付や金額で並べ替えできます',
+      '個別の記録からも請求書を印刷できます',
       'CSVエクスポートにも対応しています',
     ],
   },
@@ -159,7 +198,7 @@ export default function UsageGuide({ open, onClose }: UsageGuideProps) {
               ))}
 
               <p className="text-xs text-muted text-center pt-2">
-                WMS v2.1.0 — World Mango System
+                WMS v3.0 — World Mango System
               </p>
             </div>
           </motion.div>
