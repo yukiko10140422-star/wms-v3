@@ -136,10 +136,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-ink font-sans">
+    <div className="min-h-screen bg-background text-ink font-sans overflow-x-hidden max-w-full">
       <SyncBar status={syncStatus} queueLength={queueLength} />
 
-      <div className="flex">
+      <div className="flex max-w-full">
         <Sidebar
           currentPage={currentPage}
           onNavigate={handleNavigate}
@@ -152,8 +152,8 @@ export default function App() {
           workerAvatar={loggedInWorker?.avatar}
         />
 
-        <main className="flex-1 min-h-screen pb-20 lg:pb-0 safe-top">
-          <div className="max-w-3xl mx-auto px-4 py-6 lg:px-8 lg:py-8">
+        <main className="flex-1 min-w-0 min-h-screen pb-20 lg:pb-0 safe-top">
+          <div className="max-w-3xl mx-auto px-4 py-6 lg:px-8 lg:py-8 overflow-x-hidden">
             {renderPage()}
           </div>
         </main>

@@ -33,6 +33,13 @@
 }
 
 /* ダークモード */
+/* 横スクロール防止 */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
 /* iPhone Safe Area 対応 */
 /* env()が効かない環境ではfallback 0px */
 :root {
