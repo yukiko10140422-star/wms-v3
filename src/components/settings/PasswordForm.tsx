@@ -6,57 +6,67 @@ interface PasswordFormProps {
 }
 
 export default function PasswordForm({ onSave }: PasswordFormProps) {
-  const [newPw, setNewPw] = useState('')
-  const [confirmPw, setConfirmPw] = useState('')
+  const [newPin, setNewPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const handlePinChange = (value: string, setter: (v: string) => void) => {
+    const digits = value.replace(/\D/g, '').slice(0, 4)
+    setter(digits)
+    setError('')
+  }
 
   const handleSave = async () => {
     setError('')
 
-    if (!newPw) {
-      setError('新しいパスワードを入力してください')
+    if (newPin.length !== 4) {
+      setError('4桁の数字で設定してください')
       return
     }
-    if (newPw.length < 4) {
-      setError('4文字以上で設定してください')
-      return
-    }
-    if (newPw !== confirmPw) {
-      setError('パスワードが一致しません')
+    if (newPin !== confirmPin) {
+      setError('PINが一致しません')
       return
     }
 
     setLoading(true)
-    await onSave(newPw)
+    await onSave(newPin)
     setLoading(false)
-    setNewPw('')
-    setConfirmPw('')
+    setNewPin('')
+    setConfirmPin('')
   }
 
   return (
     <div>
       <div className="text-xs font-bold tracking-widest text-mango-dark uppercase mb-4 pb-3 border-b border-mango-light">
-        管理者パスワード
+        管理者PIN
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-bold text-muted">新しいパスワード</label>
+          <label className="text-xs font-bold text-muted">新しいPIN（4桁）</label>
           <input
             type="password"
-            value={newPw}
-            onChange={(e) => setNewPw(e.target.value)}
-            className="px-3 py-2 border border-border rounded-lg text-sm focus:border-mango focus:ring-2 focus:ring-mango/10 outline-none"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={4}
+            value={newPin}
+            onChange={(e) => handlePinChange(e.target.value, setNewPin)}
+            placeholder="••••"
+            className="px-3 py-2 border border-border rounded-lg text-sm text-center tracking-[0.5em] font-mono focus:border-mango focus:ring-2 focus:ring-mango/10 outline-none"
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs font-bold text-muted">確認（再入力）</label>
           <input
             type="password"
-            value={confirmPw}
-            onChange={(e) => setConfirmPw(e.target.value)}
-            className="px-3 py-2 border border-border rounded-lg text-sm focus:border-mango focus:ring-2 focus:ring-mango/10 outline-none"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={4}
+            value={confirmPin}
+            onChange={(e) => handlePinChange(e.target.value, setConfirmPin)}
+            placeholder="••••"
+            className="px-3 py-2 border border-border rounded-lg text-sm text-center tracking-[0.5em] font-mono focus:border-mango focus:ring-2 focus:ring-mango/10 outline-none"
           />
         </div>
       </div>
@@ -66,7 +76,7 @@ export default function PasswordForm({ onSave }: PasswordFormProps) {
       )}
 
       <Button variant="primary" loading={loading} onClick={handleSave}>
-        パスワードを変更
+        PINを変更
       </Button>
     </div>
   )

@@ -43,7 +43,7 @@ export default function Settings() {
 
   const handleChangePassword = async (newPassword: string) => {
     await updateSettings({ admin_pw: newPassword })
-    showToast('パスワードを変更しました', 'success')
+    showToast('PINを変更しました', 'success')
   }
 
   return (
@@ -51,7 +51,7 @@ export default function Settings() {
       <div className="mb-6">
         <h2 className="text-xl font-black text-ink">設定</h2>
         <p className="text-sm text-muted mt-1">
-          会社情報・外注さん管理・単価・パスワード
+          会社情報・外注さん管理・単価・PIN
         </p>
       </div>
 
