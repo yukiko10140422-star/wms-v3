@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import type { TimerLogEntry } from '../lib/types'
 
 const STORAGE_KEY = 'wms-timer-draft'
@@ -6,7 +6,6 @@ const STORAGE_KEY = 'wms-timer-draft'
 interface TimerDraft {
   elapsed: number
   log: TimerLogEntry[]
-  sessionStart: number | null
   running: boolean
   savedAt: number
 }
@@ -37,6 +36,15 @@ function clearDraft() {
   localStorage.removeItem(STORAGE_KEY)
 }
 
+/**
+ * 作業タイマーフック
+ *
+ * 時間計測の仕組み:
+ * - `elapsed`: 一時停止までに蓄積された確定済みのミリ秒
+ * - `sessionStart`: 現在のセッション開始時刻（running中のみ non-null）
+ * - 表示時間 = elapsed + (Date.now() - sessionStart)
+ * - Timer.tsx の 500ms 再レンダリングで表示を更新
+ */
 export function useTimer() {
   const [initialized, setInitialized] = useState(false)
   const [running, setRunning] = useState(false)
@@ -44,23 +52,19 @@ export function useTimer() {
   const [sessionStart, setSessionStart] = useState<number | null>(null)
   const [log, setLog] = useState<TimerLogEntry[]>([])
 
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
   // 起動時にlocalStorageから復元
   useEffect(() => {
     const draft = loadDraft()
     if (draft) {
       setLog(draft.log)
-      if (draft.running && draft.sessionStart !== null) {
-        // タイマーが動いていた場合、経過分を加算して再開
+      if (draft.running) {
+        // タイマーが動いていた場合、保存時からの経過分を加算して再開
         const additionalElapsed = Date.now() - draft.savedAt
-        const restoredElapsed = draft.elapsed + additionalElapsed
-        setElapsed(restoredElapsed)
+        setElapsed(draft.elapsed + additionalElapsed)
         setSessionStart(Date.now())
         setRunning(true)
       } else {
         setElapsed(draft.elapsed)
-        setSessionStart(null)
         setRunning(false)
       }
     }
@@ -70,37 +74,17 @@ export function useTimer() {
   // 状態が変わるたびにlocalStorageへ保存
   useEffect(() => {
     if (!initialized) return
+    // running中は elapsed + 現セッション分を保存
+    const currentElapsed = running && sessionStart !== null
+      ? elapsed + (Date.now() - sessionStart)
+      : elapsed
     saveDraft({
-      elapsed,
+      elapsed: currentElapsed,
       log,
-      sessionStart,
       running,
       savedAt: Date.now(),
     })
-  }, [initialized, elapsed, log, sessionStart, running])
-
-  const clearTimer = useCallback(() => {
-    if (intervalRef.current !== null) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-  }, [])
-
-  const startInterval = useCallback((base: number) => {
-    clearTimer()
-    const startTime = Date.now()
-    intervalRef.current = setInterval(() => {
-      setElapsed(base + (Date.now() - startTime))
-    }, 500)
-  }, [clearTimer])
-
-  // running状態が復元された時にインターバルを開始
-  useEffect(() => {
-    if (initialized && running && sessionStart !== null) {
-      startInterval(elapsed)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialized])
+  }, [initialized, elapsed, log, running, sessionStart])
 
   const start = useCallback(() => {
     const now = Date.now()
@@ -112,14 +96,12 @@ export function useTimer() {
     setLog((prev) => [...prev, entry])
     setSessionStart(now)
     setRunning(true)
-    startInterval(elapsed)
-  }, [log.length, elapsed, startInterval])
+  }, [log.length])
 
   const pause = useCallback(() => {
-    clearTimer()
     const now = Date.now()
     if (sessionStart !== null) {
-      setElapsed(elapsed + (now - sessionStart))
+      setElapsed((prev) => prev + (now - sessionStart))
     }
     const entry: TimerLogEntry = {
       type: '休憩',
@@ -128,19 +110,17 @@ export function useTimer() {
     setLog((prev) => [...prev, entry])
     setSessionStart(null)
     setRunning(false)
-  }, [clearTimer, sessionStart, elapsed])
+  }, [sessionStart])
 
   const reset = useCallback(() => {
-    clearTimer()
     setRunning(false)
     setElapsed(0)
     setSessionStart(null)
     setLog([])
     clearDraft()
-  }, [clearTimer])
+  }, [])
 
   const apply = useCallback((): { hours: number; timer_work_ms: number; timer_log: TimerLogEntry[] } => {
-    clearTimer()
     const now = Date.now()
     let finalElapsed = elapsed
     if (running && sessionStart !== null) {
@@ -160,7 +140,7 @@ export function useTimer() {
     clearDraft()
 
     return { hours, timer_work_ms: finalElapsed, timer_log: finalLog }
-  }, [clearTimer, elapsed, running, sessionStart, log])
+  }, [elapsed, running, sessionStart, log])
 
   const getDisplay = useCallback((): string => {
     let ms = elapsed
@@ -174,27 +154,27 @@ export function useTimer() {
     return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':')
   }, [elapsed, running, sessionStart])
 
+  // ページ離脱時に正確な値を保存
   useEffect(() => {
-    return () => clearTimer()
-  }, [clearTimer])
-
-  // ページ離脱時にも保存
-  useEffect(() => {
-    const handleBeforeUnload = () => {
+    const handleSave = () => {
+      const currentElapsed = running && sessionStart !== null
+        ? elapsed + (Date.now() - sessionStart)
+        : elapsed
       saveDraft({
-        elapsed: running && sessionStart !== null ? elapsed + (Date.now() - sessionStart) : elapsed,
+        elapsed: currentElapsed,
         log,
-        sessionStart: running ? Date.now() : null,
         running,
         savedAt: Date.now(),
       })
     }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') handleBeforeUnload()
-    })
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') handleSave()
+    }
+    window.addEventListener('beforeunload', handleSave)
+    document.addEventListener('visibilitychange', handleVisibility)
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('beforeunload', handleSave)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [elapsed, log, sessionStart, running])
 
