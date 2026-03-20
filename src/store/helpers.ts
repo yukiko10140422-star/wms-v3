@@ -1,8 +1,14 @@
 import type { Worker, Settings } from '../lib/types'
 
+/** Worker 行の最低限の形状（型ガード通過後のデータ） */
+type WorkerRow = Record<string, unknown> & { id: string; name: string }
+
+/** Settings 行の最低限の形状（型ガード通過後のデータ） */
+type SettingsRow = Record<string, unknown> & { id: number; bonus_rate: number; hourly_rate: number }
+
 /** DB の workers 行から pin を除去し has_pin にマッピング */
-export function toWorker(row: Record<string, unknown>): Worker {
-  const { pin, ...rest } = row as Record<string, unknown> & { pin?: string | null }
+export function toWorker(row: WorkerRow): Worker {
+  const { pin, ...rest } = row as WorkerRow & { pin?: string | null }
   return {
     ...rest,
     has_pin: pin !== null && pin !== undefined && pin !== '',
@@ -10,8 +16,8 @@ export function toWorker(row: Record<string, unknown>): Worker {
 }
 
 /** DB の settings 行から admin_pw を除去 */
-export function toSettings(row: Record<string, unknown>): Settings {
-  const { admin_pw, ...rest } = row as Record<string, unknown> & { admin_pw?: string }
+export function toSettings(row: SettingsRow): Settings {
+  const { admin_pw, ...rest } = row as SettingsRow & { admin_pw?: string }
   void admin_pw
   return rest as Settings
 }

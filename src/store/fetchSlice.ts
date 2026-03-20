@@ -4,6 +4,7 @@ import type { Worker, Process, WorkRecord, Shift, Settings } from '../lib/types'
 import { supabase } from '../lib/supabase'
 import { RECORDS_FETCH_LIMIT, SHIFTS_FETCH_LIMIT } from '../lib/constants'
 import { threeMonthsAgo, WORKER_COLUMNS, SETTINGS_COLUMNS } from './helpers'
+import { isWorkerRow, isProcess, isWorkRecord, isShift, isSettings } from '../lib/typeGuards'
 
 export interface FetchSlice {
   fetchAll: () => Promise<void>
@@ -27,17 +28,30 @@ export const createFetchSlice: StateCreator<StoreState, [], [], FetchSlice> = (s
       if (shRes.error) throw shRes.error
       if (stRes.error) throw stRes.error
 
-      const workers = (wRes.data as Record<string, unknown>[]).map((row) => ({
-        ...row,
-        has_pin: false,
-      })) as Worker[]
+      // Supabase の select は型推論が効かないため最低限の as で配列化し、
+      // map 内で型ガードを適用して不正な行を除外
+      const workers: Worker[] = (wRes.data as Record<string, unknown>[])
+        .filter(isWorkerRow)
+        .map((row) => ({
+          ...row,
+          has_pin: false,
+        })) as Worker[]
+
+      const processes: Process[] = (pRes.data as Record<string, unknown>[]).filter(isProcess)
+
+      const records: WorkRecord[] = (rRes.data as Record<string, unknown>[]).filter(isWorkRecord)
+
+      const shifts: Shift[] = (shRes.data as Record<string, unknown>[]).filter(isShift)
+
+      const settingsRaw = stRes.data as Record<string, unknown>
+      const settings: Settings | null = isSettings(settingsRaw) ? (settingsRaw as Settings) : null
 
       set({
         workers,
-        processes: pRes.data as Process[],
-        records: rRes.data as WorkRecord[],
-        shifts: shRes.data as Shift[],
-        settings: stRes.data as Settings,
+        processes,
+        records,
+        shifts,
+        settings,
         syncStatus: 'ok',
       })
 

@@ -1,9 +1,18 @@
 import type { StateCreator } from 'zustand'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { StoreState } from './useStore'
-import type { Process, WorkRecord, Shift, Draft } from '../lib/types'
 import { supabase } from '../lib/supabase'
 import { toWorker, toSettings } from './helpers'
+import {
+  isWorkerRow,
+  isProcess,
+  isWorkRecord,
+  isShift,
+  isDraft,
+  isSettings,
+  hasStringId,
+  hasNumberId,
+} from '../lib/typeGuards'
 
 export interface RealtimeSlice {
   _realtimeChannel: RealtimeChannel | null
@@ -26,97 +35,108 @@ export const createRealtimeSlice: StateCreator<StoreState, [], [], RealtimeSlice
       .channel('wms-realtime')
       // Workers — Realtime payload にはカラムフィルタが効かないため pin を手動除去
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'workers' }, (payload) => {
-        const newWorker = toWorker(payload.new as Record<string, unknown>)
+        if (!isWorkerRow(payload.new)) return
+        const newWorker = toWorker(payload.new)
         set((s) => {
           if (s.workers.some((w) => w.id === newWorker.id)) return s
           return { workers: [...s.workers, newWorker] }
         })
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'workers' }, (payload) => {
-        const updated = toWorker(payload.new as Record<string, unknown>)
+        if (!isWorkerRow(payload.new)) return
+        const updated = toWorker(payload.new)
         set((s) => ({
           workers: s.workers.map((w) => (w.id === updated.id ? updated : w)),
         }))
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'workers' }, (payload) => {
-        const deletedId = (payload.old as { id: string }).id
-        set((s) => ({ workers: s.workers.filter((w) => w.id !== deletedId) }))
+        if (!hasStringId(payload.old)) return
+        set((s) => ({ workers: s.workers.filter((w) => w.id !== payload.old.id) }))
       })
       // Processes
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'processes' }, (payload) => {
-        const newProcess = payload.new as Process
+        if (!isProcess(payload.new)) return
+        const newProcess = payload.new
         set((s) => {
           if (s.processes.some((p) => p.id === newProcess.id)) return s
           return { processes: [...s.processes, newProcess].sort((a, b) => a.sort_order - b.sort_order) }
         })
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'processes' }, (payload) => {
-        const updated = payload.new as Process
+        if (!isProcess(payload.new)) return
+        const updated = payload.new
         set((s) => ({
           processes: s.processes.map((p) => (p.id === updated.id ? updated : p)).sort((a, b) => a.sort_order - b.sort_order),
         }))
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'processes' }, (payload) => {
-        const deletedId = (payload.old as { id: string }).id
-        set((s) => ({ processes: s.processes.filter((p) => p.id !== deletedId) }))
+        if (!hasStringId(payload.old)) return
+        set((s) => ({ processes: s.processes.filter((p) => p.id !== payload.old.id) }))
       })
       // Records
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'records' }, (payload) => {
-        const newRecord = payload.new as WorkRecord
+        if (!isWorkRecord(payload.new)) return
+        const newRecord = payload.new
         set((s) => {
           if (s.records.some((r) => r.id === newRecord.id)) return s
           return { records: [newRecord, ...s.records] }
         })
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'records' }, (payload) => {
-        const updated = payload.new as WorkRecord
+        if (!isWorkRecord(payload.new)) return
+        const updated = payload.new
         set((s) => ({
           records: s.records.map((r) => (r.id === updated.id ? updated : r)),
         }))
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'records' }, (payload) => {
-        const deletedId = (payload.old as { id: number }).id
-        set((s) => ({ records: s.records.filter((r) => r.id !== deletedId) }))
+        if (!hasNumberId(payload.old)) return
+        set((s) => ({ records: s.records.filter((r) => r.id !== payload.old.id) }))
       })
       // Shifts
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shifts' }, (payload) => {
-        const newShift = payload.new as Shift
+        if (!isShift(payload.new)) return
+        const newShift = payload.new
         set((s) => {
           if (s.shifts.some((sh) => sh.id === newShift.id)) return s
           return { shifts: [newShift, ...s.shifts] }
         })
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'shifts' }, (payload) => {
-        const updated = payload.new as Shift
+        if (!isShift(payload.new)) return
+        const updated = payload.new
         set((s) => ({
           shifts: s.shifts.map((sh) => (sh.id === updated.id ? updated : sh)),
         }))
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'shifts' }, (payload) => {
-        const deletedId = (payload.old as { id: number }).id
-        set((s) => ({ shifts: s.shifts.filter((sh) => sh.id !== deletedId) }))
+        if (!hasNumberId(payload.old)) return
+        set((s) => ({ shifts: s.shifts.filter((sh) => sh.id !== payload.old.id) }))
       })
       // Settings — admin_pw を手動除去
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'settings' }, (payload) => {
-        set({ settings: toSettings(payload.new as Record<string, unknown>) })
+        if (!isSettings(payload.new)) return
+        set({ settings: toSettings(payload.new) })
       })
       // Drafts
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drafts' }, (payload) => {
         if (!get()._draftsAvailable) return
         if (payload.eventType === 'INSERT') {
-          const newDraft = payload.new as Draft
+          if (!isDraft(payload.new)) return
+          const newDraft = payload.new
           set((s) => {
             if (s.drafts.some((d) => d.id === newDraft.id)) return s
             return { drafts: [...s.drafts, newDraft] }
           })
         } else if (payload.eventType === 'UPDATE') {
-          const updated = payload.new as Draft
+          if (!isDraft(payload.new)) return
+          const updated = payload.new
           set((s) => ({
             drafts: s.drafts.map((d) => (d.id === updated.id ? updated : d)),
           }))
         } else if (payload.eventType === 'DELETE') {
-          const deletedId = (payload.old as { id: string }).id
-          set((s) => ({ drafts: s.drafts.filter((d) => d.id !== deletedId) }))
+          if (!hasStringId(payload.old)) return
+          set((s) => ({ drafts: s.drafts.filter((d) => d.id !== payload.old.id) }))
         }
       })
       .subscribe()
