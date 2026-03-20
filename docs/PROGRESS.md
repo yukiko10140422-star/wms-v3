@@ -227,6 +227,25 @@
 
 ---
 
+## Phase 12（セキュリティ/品質修正）
+
+| タスク | ステータス | 担当Agent | 備考 |
+| --- | --- | --- | --- |
+| vitest環境セットアップ | 完了 | main | vitest+happy-dom+testing-library |
+| escapeHtml/timerUtilsテスト | 完了 | main | 20テスト |
+| admin_pw/PINサーバーサイド化 | 完了 | main | RPC verify_admin_pw/verify_worker_pin |
+| Worker型 pin→has_pin | 完了 | main | クライアントにPIN非送信 |
+| Settings型 admin_pw除外 | 完了 | main | select/Realtimeで除去 |
+| unlockAdmin/loginWorker非同期化 | 完了 | main | supabase.rpc呼び出し |
+| MySettings PIN検証RPC化 | 完了 | main | verify_worker_pin RPC |
+| ページネーション追加 | 完了 | main | records 3ヶ月+500件, shifts 200件 |
+| HOURLY_RATE設定化 | 完了 | main | settings.hourly_rate+設定画面UI |
+| RLSポリシー適正化SQL | 完了 | main | 操作種別ごとに分離 |
+| ストアテスト | 完了 | main | 9テスト（auth/fetchAll） |
+| migration_security.sql | 完了 | main | Supabase適用待ち |
+
+---
+
 ## 今後の改善候補（バックログ）
 
 > 優先度順。実運用のフィードバックをもとに着手する。

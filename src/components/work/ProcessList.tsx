@@ -85,7 +85,7 @@ export default function ProcessList({ onItemsChange, resetSignal, importData }: 
     setSortedIds(processes.map((p) => p.id))
   }, [processes])
 
-  const HOURLY_RATE = 1200
+  const hourlyRate = useStore((s) => s.settings)?.hourly_rate ?? 1200
 
   // リセットシグナルで入力をクリア
   useEffect(() => {
@@ -133,10 +133,10 @@ export default function ProcessList({ onItemsChange, resetSignal, importData }: 
       }
 
       if (hours > 0) {
-        const sub = Math.round(HOURLY_RATE * hours)
+        const sub = Math.round(hourlyRate * hours)
         items.push({
           name: '会議・他業務',
-          price: HOURLY_RATE,
+          price: hourlyRate,
           qty: hours,
           sub,
           isHourly: true,
@@ -146,7 +146,7 @@ export default function ProcessList({ onItemsChange, resetSignal, importData }: 
 
       return { items, baseTotal }
     },
-    [processes]
+    [processes, hourlyRate]
   )
 
   // 初回マウント時に復元した数量から合計を通知
@@ -240,7 +240,7 @@ export default function ProcessList({ onItemsChange, resetSignal, importData }: 
           <div className="w-5" />
           <div className="flex-1 min-w-0">
             <span className="text-sm font-medium">会議・他業務</span>
-            <span className="ml-2 text-xs text-muted font-mono">¥1,200/h</span>
+            <span className="ml-2 text-xs text-muted font-mono">¥{hourlyRate.toLocaleString()}/h</span>
           </div>
           <input
             type="number"
@@ -257,7 +257,7 @@ export default function ProcessList({ onItemsChange, resetSignal, importData }: 
               ${hourlyHours > 0 ? 'text-mango-dark' : 'text-muted'}
             `}
           >
-            ¥{Math.round(HOURLY_RATE * hourlyHours).toLocaleString()}
+            ¥{Math.round(hourlyRate * hourlyHours).toLocaleString()}
           </div>
         </div>
       </div>

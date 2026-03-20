@@ -6,7 +6,7 @@ const MAX_ATTEMPTS = 5
 const LOCKOUT_SECONDS = 30
 
 interface AdminGuardProps {
-  onUnlock: (password: string) => boolean
+  onUnlock: (password: string) => Promise<boolean>
   open: boolean
   onClose: () => void
 }
@@ -14,8 +14,26 @@ interface AdminGuardProps {
 export default function AdminGuard({ onUnlock, open, onClose }: AdminGuardProps) {
   const [pin, setPin] = useState('')
   const [shaking, setShaking] = useState(false)
-  const [failedAttempts, setFailedAttempts] = useState(0)
-  const [lockedUntil, setLockedUntil] = useState<number | null>(null)
+  const [failedAttempts, setFailedAttempts] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('wms-admin-lockout')
+      if (raw) {
+        const data = JSON.parse(raw)
+        if (data.until && Date.now() < data.until) return data.attempts
+      }
+    } catch { /* ignore */ }
+    return 0
+  })
+  const [lockedUntil, setLockedUntil] = useState<number | null>(() => {
+    try {
+      const raw = sessionStorage.getItem('wms-admin-lockout')
+      if (raw) {
+        const data = JSON.parse(raw)
+        if (data.until && Date.now() < data.until) return data.until
+      }
+    } catch { /* ignore */ }
+    return null
+  })
   const [lockoutRemaining, setLockoutRemaining] = useState(0)
   const lockoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -61,8 +79,8 @@ export default function AdminGuard({ onUnlock, open, onClose }: AdminGuardProps)
       if (prev.length >= 4) return prev
       const next = prev + digit
       if (next.length === 4) {
-        setTimeout(() => {
-          const success = onUnlock(next)
+        setTimeout(async () => {
+          const success = await onUnlock(next)
           if (success) {
             setPin('')
             setFailedAttempts(0)
@@ -72,7 +90,9 @@ export default function AdminGuard({ onUnlock, open, onClose }: AdminGuardProps)
             const newAttempts = failedAttempts + 1
             setFailedAttempts(newAttempts)
             if (newAttempts >= MAX_ATTEMPTS) {
-              setLockedUntil(Date.now() + LOCKOUT_SECONDS * 1000)
+              const until = Date.now() + LOCKOUT_SECONDS * 1000
+              setLockedUntil(until)
+              try { sessionStorage.setItem('wms-admin-lockout', JSON.stringify({ until, attempts: newAttempts })) } catch { /* ignore */ }
             }
             setShaking(true)
             setTimeout(() => {

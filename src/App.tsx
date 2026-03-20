@@ -73,8 +73,8 @@ export default function App() {
     setShowAdminGuard(true)
   }
 
-  const handleUnlock = (password: string): boolean => {
-    const success = unlockAdmin(password)
+  const handleUnlock = async (password: string): Promise<boolean> => {
+    const success = await unlockAdmin(password)
     if (success) {
       setCurrentPage(pendingAdminPage || 'settings')
       setPendingAdminPage(null)

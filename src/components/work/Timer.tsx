@@ -1,13 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Play, Pause, RotateCcw, Check } from 'lucide-react'
 import { useTimer } from '../../hooks/useTimer'
+import { formatTimeLocal } from '../../lib/timerUtils'
 import type { TimerLogEntry } from '../../lib/types'
 
 interface TimerProps {
   onApply: (result: { hours: number; timer_work_ms: number; timer_log: TimerLogEntry[] }) => void
 }
 
-export default function Timer({ onApply }: TimerProps) {
+export interface TimerHandle {
+  hasData: () => boolean
+  apply: () => { hours: number; timer_work_ms: number; timer_log: TimerLogEntry[] }
+}
+
+const Timer = forwardRef<TimerHandle, TimerProps>(({ onApply }, ref) => {
   const timer = useTimer()
   const [, setTick] = useState(0)
 
@@ -16,6 +22,11 @@ export default function Timer({ onApply }: TimerProps) {
     const id = setInterval(() => setTick((t) => t + 1), 500)
     return () => clearInterval(id)
   }, [])
+
+  useImperativeHandle(ref, () => ({
+    hasData: () => timer.running || timer.log.length > 0,
+    apply: () => timer.apply(),
+  }))
 
   const status = timer.running ? '作業中' : timer.log.length > 0 ? '休憩中' : '待機中'
   const statusColor = timer.running
@@ -96,7 +107,7 @@ export default function Timer({ onApply }: TimerProps) {
               key={i}
               className="flex items-center gap-2 text-xs text-white/60"
             >
-              <span className="font-mono">{entry.time}</span>
+              <span className="font-mono">{formatTimeLocal(entry.time)}</span>
               <span className="text-white/40">—</span>
               <span>{entry.type}</span>
             </div>
@@ -105,4 +116,7 @@ export default function Timer({ onApply }: TimerProps) {
       )}
     </div>
   )
-}
+})
+
+Timer.displayName = 'Timer'
+export default Timer

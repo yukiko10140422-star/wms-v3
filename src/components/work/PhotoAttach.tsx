@@ -39,12 +39,15 @@ export default function PhotoAttach({ photos, onChange, max = 3 }: PhotoAttachPr
   const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return
     setLoading(true)
     try {
       const newPhotos = [...photos]
       for (let i = 0; i < files.length && newPhotos.length < max; i++) {
+        if (!allowedTypes.includes(files[i].type)) continue
         const compressed = await compressImage(files[i])
         newPhotos.push(compressed)
       }

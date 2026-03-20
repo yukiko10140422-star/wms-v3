@@ -5,11 +5,13 @@ import { useStore } from '../store/useStore'
 import ProcessList from '../components/work/ProcessList'
 import BonusToggle from '../components/work/BonusToggle'
 import Timer from '../components/work/Timer'
+import type { TimerHandle } from '../components/work/Timer'
 import TotalPanel from '../components/work/TotalPanel'
 import Button from '../components/ui/Button'
 import LiveDrafts from '../components/work/LiveDrafts'
 import PhotoAttach from '../components/work/PhotoAttach'
 import { enqueueRecord } from '../hooks/useOfflineQueue'
+import { formatTimeLocal } from '../lib/timerUtils'
 import type { WorkItem, TimerLogEntry, Draft } from '../lib/types'
 
 const DRAFT_KEY = 'wms-worksubmit-draft'
@@ -85,6 +87,7 @@ export default function WorkSubmit() {
     timer_log: TimerLogEntry[]
   } | null>(null)
   const [photos, setPhotos] = useState<string[]>([])
+  const timerRef = useRef<TimerHandle>(null)
   const [submitState, setSubmitState] = useState<'idle' | 'submitting' | 'done'>('idle')
   const [resetSignal, setResetSignal] = useState(0)
   const [importData, setImportData] = useState<{ quantities: Record<string, number>; hourlyHours: number } | null>(null)
@@ -206,9 +209,9 @@ export default function WorkSubmit() {
     (result: { hours: number; timer_work_ms: number; timer_log: TimerLogEntry[] }) => {
       setTimerData(result)
       const logText = result.timer_log
-        .map((e) => `${e.time} ${e.type}`)
-        .join(' / ')
-      setRemarks((prev) => (prev ? `${prev}\n[タイマー] ${logText}` : `[タイマー] ${logText}`))
+        .map((e) => `[${formatTimeLocal(e.time)}] ${e.type}`)
+        .join('\n')
+      setRemarks((prev) => (prev ? `${prev}\n${logText}` : logText))
       showToast('タイマーを反映しました', 'success')
     },
     [showToast]
@@ -277,10 +280,22 @@ export default function WorkSubmit() {
       if (!confirmed) return
     }
 
+    // 5. タイマーが動作中なら自動適用
+    let currentTimerData = timerData
+    if (!currentTimerData && timerRef.current?.hasData()) {
+      const result = timerRef.current.apply()
+      currentTimerData = result
+      setTimerData(result)
+      const logText = result.timer_log
+        .map((e) => `[${formatTimeLocal(e.time)}] ${e.type}`)
+        .join('\n')
+      setRemarks((prev) => (prev ? `${prev}\n${logText}` : logText))
+    }
+
     setSubmitState('submitting')
 
     try {
-      // 4. 最新単価で再計算
+      // 6. 最新単価で再計算
       const recalc = recalculateWithLatestPrices(items)
       const finalBaseTotal = recalc.baseTotal
       const finalBonusAmt = bonusOn ? Math.round(finalBaseTotal * (bonusRate / 100)) : 0
@@ -298,9 +313,9 @@ export default function WorkSubmit() {
         items: recalc.items,
         base_total: finalBaseTotal,
         total: finalTotal,
-        hours: timerData?.hours ?? 0,
-        timer_log: timerData?.timer_log ?? [],
-        timer_work_ms: timerData?.timer_work_ms ?? 0,
+        hours: currentTimerData?.hours ?? 0,
+        timer_log: currentTimerData?.timer_log ?? [],
+        timer_work_ms: currentTimerData?.timer_work_ms ?? 0,
         photos: photos,
         status: 'pending' as const,
       }
@@ -552,7 +567,7 @@ export default function WorkSubmit() {
       </div>
 
       {/* Timer */}
-      <Timer onApply={handleTimerApply} />
+      <Timer ref={timerRef} onApply={handleTimerApply} />
 
       {/* Remarks */}
       <div className="space-y-1.5">

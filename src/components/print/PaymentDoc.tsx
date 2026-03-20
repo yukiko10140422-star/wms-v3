@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { ArrowLeft, Printer } from 'lucide-react'
 import type { WorkRecord, Settings, Worker } from '../../lib/types'
+import { formatDurationMs } from '../../lib/timerUtils'
+import { escapeHtml } from '../../lib/escapeHtml'
 import Button from '../ui/Button'
 
 interface PaymentDocProps {
@@ -55,12 +57,12 @@ export default function PaymentDoc({
   const docHtml = useMemo(() => {
     if (!records.length) return '<p>対象の記録がありません</p>'
 
-    const comp = settings.company || 'World Mango System'
-    const mgr = settings.manager || ''
-    const addr = settings.address || ''
-    const wn = records[0].worker_name
-    const wa = records[0].address || ''
-    const wObj = workers.find((w) => w.name === wn)
+    const comp = escapeHtml(settings.company || 'World Mango System')
+    const mgr = escapeHtml(settings.manager || '')
+    const addr = escapeHtml(settings.address || '')
+    const wn = escapeHtml(records[0].worker_name)
+    const wa = escapeHtml(records[0].address || '')
+    const wObj = workers.find((w) => w.name === records[0].worker_name)
 
     const tp = records.reduce((a, r) => a + r.total, 0)
     const tax = Math.round(tp * 0.1)
@@ -88,15 +90,13 @@ export default function PaymentDoc({
       }
     })
     const hasTimer = twMs > 0
-    const twh = Math.floor(twMs / 3600000)
-    const twm = Math.floor((twMs % 3600000) / 60000)
-    const tbh = Math.floor(tbMs / 3600000)
-    const tbm = Math.floor((tbMs % 3600000) / 60000)
+    const twDisplay = formatDurationMs(twMs)
+    const tbDisplay = formatDurationMs(tbMs)
 
     let rows = ''
     records.forEach((r) => {
       r.items.forEach((it, i) => {
-        rows += `<tr><td class="dc">${i === 0 ? r.date : ''}</td><td>${it.name}</td><td class="num">&yen;${it.price.toLocaleString()}</td><td class="num">${it.isHourly ? it.qty + 'h' : it.qty + '個'}</td><td class="num">&yen;${it.sub.toLocaleString()}</td><td class="num">&yen;${Math.round(it.sub * 0.1).toLocaleString()}</td></tr>`
+        rows += `<tr><td class="dc">${i === 0 ? escapeHtml(r.date) : ''}</td><td>${escapeHtml(it.name)}</td><td class="num">&yen;${it.price.toLocaleString()}</td><td class="num">${it.isHourly ? it.qty + 'h' : it.qty + '個'}</td><td class="num">&yen;${it.sub.toLocaleString()}</td><td class="num">&yen;${Math.round(it.sub * 0.1).toLocaleString()}</td></tr>`
       })
       if (r.bonus_on) {
         rows += `<tr><td></td><td>+${r.bonus_rate || 10}%上乗せ</td><td></td><td></td><td class="num">&yen;${r.bonus_amt.toLocaleString()}</td><td class="num">&yen;${Math.round(r.bonus_amt * 0.1).toLocaleString()}</td></tr>`
@@ -106,12 +106,12 @@ export default function PaymentDoc({
 
     const remarks = records
       .filter((r) => r.remarks)
-      .map((r) => `[${r.date}] ${r.remarks}`)
+      .map((r) => `[${escapeHtml(r.date)}] ${escapeHtml(r.remarks)}`)
       .join('\n')
 
-    let html = `<div class="dh"><div><div class="dt">請 求 書</div><div class="dn">文書番号：${docNo}</div></div><div class="di"><div class="ml">支払元</div><div class="dc2">宮崎友祈子</div></div></div>`
+    let html = `<div class="dh"><div><div class="dt">請 求 書</div><div class="dn">文書番号：${escapeHtml(docNo)}</div></div><div class="di"><div class="ml">支払元</div><div class="dc2">${mgr || comp}</div></div></div>`
 
-    html += `<div class="dm"><div class="mb"><div class="ml">請求者</div><div class="mv">${wn}</div>${wa ? `<div style="font-size:8.5pt;color:#555;margin-top:1mm;">${wa}</div>` : ''}</div><div class="mb"><div class="ml">対象期間</div><div class="mv">${title}</div><div style="font-size:7.5pt;color:#555;margin-top:1mm;">作業件数：${records.length}件</div></div></div>`
+    html += `<div class="dm"><div class="mb"><div class="ml">請求者</div><div class="mv">${wn}</div>${wa ? `<div style="font-size:8.5pt;color:#555;margin-top:1mm;">${wa}</div>` : ''}</div><div class="mb"><div class="ml">対象期間</div><div class="mv">${escapeHtml(title)}</div><div style="font-size:7.5pt;color:#555;margin-top:1mm;">作業件数：${records.length}件</div></div></div>`
 
     html += `<div class="dp">■ 加工作業明細</div>`
     html += `<table class="dtb"><thead><tr><th style="width:22mm;">作業日</th><th>加工の種類</th><th style="width:17mm;">単価</th><th style="width:17mm;">数量</th><th style="width:21mm;">金額（税抜）</th><th style="width:17mm;">消費税</th></tr></thead><tbody>${rows}</tbody></table>`
@@ -119,7 +119,7 @@ export default function PaymentDoc({
     html += `<div class="cf"><div class="tot"><div class="tr2"><span>税抜合計</span><span>&yen;${tp.toLocaleString()}</span></div><div class="tr2"><span>消費税（10%）</span><span>&yen;${tax.toLocaleString()}</span></div><div class="tr2 g"><span>税込合計</span><span>&yen;${wt.toLocaleString()}</span></div></div>`
 
     if (hasTimer) {
-      html += `<div class="tmb"><div class="tml">作業時間記録</div><div class="tmg"><div><div class="tms">作業合計</div><div class="tmv">${twh}時間${String(twm).padStart(2, '0')}分</div></div><div><div class="tms">休憩合計</div><div class="tmv">${tbh}時間${String(tbm).padStart(2, '0')}分</div></div></div></div>`
+      html += `<div class="tmb"><div class="tml">作業時間記録</div><div class="tmg"><div><div class="tms">作業合計</div><div class="tmv">${twDisplay}</div></div><div><div class="tms">休憩合計</div><div class="tmv">${tbDisplay}</div></div></div></div>`
     }
 
     html += `<div class="rem"><div class="reml">備考</div><div class="remt">${remarks || '\u3000'}</div></div></div>`
@@ -129,12 +129,12 @@ export default function PaymentDoc({
     if (hasBankInfo) {
       html += `<div class="bks"><div class="bkg">`
       if (wObj?.bank_name) {
-        html += `<div class="bkb"><div class="bkl">振込先（外注さん口座）</div><div class="bkn">${wObj.bank_name} ${wObj.bank_branch || ''}</div><div class="bkd">${wObj.bank_type || '普通'} ${wObj.bank_number || ''}<br>名義：${wObj.bank_holder || wn}</div></div>`
+        html += `<div class="bkb"><div class="bkl">振込先（外注さん口座）</div><div class="bkn">${escapeHtml(wObj.bank_name)} ${escapeHtml(wObj.bank_branch || '')}</div><div class="bkd">${escapeHtml(wObj.bank_type || '普通')} ${escapeHtml(wObj.bank_number || '')}<br>名義：${escapeHtml(wObj.bank_holder || records[0].worker_name)}</div></div>`
       } else {
         html += '<div></div>'
       }
       if (settings.bank_name) {
-        html += `<div class="bkb"><div class="bkl">振込元（自社口座）</div><div class="bkn">${settings.bank_name} ${settings.bank_branch || ''}</div><div class="bkd">${settings.bank_type || '普通'} ${settings.bank_number || ''}<br>名義：${settings.bank_holder || comp}</div></div>`
+        html += `<div class="bkb"><div class="bkl">振込元（自社口座）</div><div class="bkn">${escapeHtml(settings.bank_name)} ${escapeHtml(settings.bank_branch || '')}</div><div class="bkd">${escapeHtml(settings.bank_type || '普通')} ${escapeHtml(settings.bank_number || '')}<br>名義：${escapeHtml(settings.bank_holder || settings.company || '')}</div></div>`
       }
       html += `</div></div>`
     }
@@ -143,7 +143,7 @@ export default function PaymentDoc({
     html += `<div class="sa"><div class="sb"><div class="sc"></div><div class="sl">確認印</div></div><div class="sb"><div class="sc"></div><div class="sl">承認印</div></div></div>`
 
     // Footer
-    html += `<div class="ft">本請求書は${new Date().toLocaleDateString('ja-JP')}に発行されました。 | 宮崎友祈子</div>`
+    html += `<div class="ft">本請求書は${new Date().toLocaleDateString('ja-JP')}に発行されました。 | ${mgr || comp}</div>`
 
     return html
   }, [records, settings, workers, title])

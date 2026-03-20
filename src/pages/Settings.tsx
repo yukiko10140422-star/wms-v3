@@ -24,7 +24,9 @@ export default function Settings() {
   } = useStore()
 
   const [bonusRate, setBonusRate] = useState(settings?.bonus_rate || 10)
+  const [hourlyRate, setHourlyRate] = useState(settings?.hourly_rate || 1200)
   const [savingBonus, setSavingBonus] = useState(false)
+  const [savingHourly, setSavingHourly] = useState(false)
 
   if (!settings) {
     return (
@@ -87,6 +89,43 @@ export default function Settings() {
           variant="primary"
           loading={savingBonus}
           onClick={handleSaveBonusRate}
+        >
+          保存
+        </Button>
+      </div>
+
+      {/* 2.5. Hourly Rate */}
+      <div className="bg-white rounded-2xl border border-border p-6 mb-6">
+        <div className="text-xs font-bold tracking-widest text-mango-dark uppercase mb-4 pb-3 border-b border-mango-light">
+          時給設定
+        </div>
+        <div className="flex items-center gap-3 mb-4">
+          <label className="text-xs font-bold text-muted">
+            会議・他業務の時給
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted">¥</span>
+            <input
+              type="number"
+              value={hourlyRate}
+              onChange={(e) =>
+                setHourlyRate(parseInt(e.target.value) || 1200)
+              }
+              min={100}
+              step={100}
+              className="w-24 px-3 py-2 border border-border rounded-lg text-sm text-center font-mono focus:border-mango outline-none"
+            />
+          </div>
+        </div>
+        <Button
+          variant="primary"
+          loading={savingHourly}
+          onClick={async () => {
+            const val = Math.max(100, hourlyRate)
+            setSavingHourly(true)
+            await updateSettings({ hourly_rate: val })
+            setSavingHourly(false)
+          }}
         >
           保存
         </Button>

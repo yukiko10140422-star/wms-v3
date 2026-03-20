@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trash2, Printer, ChevronDown } from 'lucide-react'
+import { Trash2, Printer, ChevronDown, Clock } from 'lucide-react'
 import type { WorkRecord } from '../../lib/types'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
+import { formatDurationMs } from '../../lib/timerUtils'
 
 interface RecordCardProps {
   record: WorkRecord
@@ -159,6 +160,13 @@ export default function RecordCard({
                       onClick={() => window.open(photo, '_blank')}
                     />
                   ))}
+                </div>
+              )}
+
+              {record.timer_work_ms > 0 && (
+                <div className="flex items-center gap-2 text-xs text-muted mb-3 bg-white/50 rounded-lg px-3 py-2">
+                  <Clock className="w-3.5 h-3.5 text-mango-dark flex-shrink-0" />
+                  <span className="font-medium text-ink">作業時間：{formatDurationMs(record.timer_work_ms)}</span>
                 </div>
               )}
 

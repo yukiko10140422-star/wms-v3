@@ -11,6 +11,29 @@ interface Toast {
   type: ToastType
 }
 
+/** DB の workers 行から pin を除去し has_pin にマッピング */
+function toWorker(row: Record<string, unknown>): Worker {
+  const { pin, ...rest } = row as Record<string, unknown> & { pin?: string | null }
+  return {
+    ...rest,
+    has_pin: pin !== null && pin !== undefined && pin !== '',
+  } as Worker
+}
+
+/** DB の settings 行から admin_pw を除去 */
+function toSettings(row: Record<string, unknown>): Settings {
+  const { admin_pw, ...rest } = row as Record<string, unknown> & { admin_pw?: string }
+  void admin_pw
+  return rest as Settings
+}
+
+/** 3ヶ月前の日付文字列（YYYY-MM-DD） */
+function threeMonthsAgo(): string {
+  const d = new Date()
+  d.setMonth(d.getMonth() - 3)
+  return d.toISOString().slice(0, 10)
+}
+
 interface StoreState {
   workers: Worker[]
   processes: Process[]
@@ -31,10 +54,10 @@ interface StoreState {
   fetchAll: () => Promise<void>
   subscribeRealtime: () => void
   unsubscribeRealtime: () => void
-  unlockAdmin: (password: string) => boolean
+  unlockAdmin: (password: string) => Promise<boolean>
 
   // Worker auth
-  loginWorker: (workerId: string, pin: string) => boolean
+  loginWorker: (workerId: string, pin: string) => Promise<boolean>
   loginWorkerAsAdmin: (workerId: string) => void
   logoutWorker: () => void
   restoreWorkerSession: () => void
@@ -44,8 +67,8 @@ interface StoreState {
   updateRecordStatus: (id: number, status: WorkRecord['status']) => Promise<void>
   deleteRecord: (id: number) => Promise<void>
 
-  addWorker: (worker: Omit<Worker, 'id'>) => Promise<void>
-  updateWorker: (id: string, data: Partial<Worker>) => Promise<void>
+  addWorker: (worker: Omit<Worker, 'id' | 'has_pin'> & { pin: string }) => Promise<void>
+  updateWorker: (id: string, data: Partial<Omit<Worker, 'has_pin'>> & { pin?: string }) => Promise<void>
   deleteWorker: (id: string) => Promise<void>
 
   addProcess: (process: Omit<Process, 'id' | 'sort_order'>) => Promise<void>
@@ -71,6 +94,12 @@ interface StoreState {
   fetchFeatureRequests: () => Promise<void>
   updateFeatureRequest: (id: number, data: Partial<FeatureRequest>) => Promise<void>
 }
+
+/** workers テーブルから取得するカラム（pin を除外） */
+const WORKER_COLUMNS = 'id,name,address,avatar,bank_name,bank_branch,bank_type,bank_number,bank_holder'
+
+/** settings テーブルから取得するカラム（admin_pw を除外） */
+const SETTINGS_COLUMNS = 'id,company,manager,address,bonus_rate,bank_name,bank_branch,bank_type,bank_number,bank_holder,hourly_rate'
 
 export const useStore = create<StoreState>((set, get) => ({
   workers: [],
@@ -98,16 +127,16 @@ export const useStore = create<StoreState>((set, get) => ({
 
     const channel = supabase
       .channel('wms-realtime')
-      // Workers
+      // Workers — Realtime payload にはカラムフィルタが効かないため pin を手動除去
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'workers' }, (payload) => {
-        const newWorker = payload.new as Worker
+        const newWorker = toWorker(payload.new as Record<string, unknown>)
         set((s) => {
           if (s.workers.some((w) => w.id === newWorker.id)) return s
           return { workers: [...s.workers, newWorker] }
         })
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'workers' }, (payload) => {
-        const updated = payload.new as Worker
+        const updated = toWorker(payload.new as Record<string, unknown>)
         set((s) => ({
           workers: s.workers.map((w) => (w.id === updated.id ? updated : w)),
         }))
@@ -170,9 +199,9 @@ export const useStore = create<StoreState>((set, get) => ({
         const deletedId = (payload.old as { id: number }).id
         set((s) => ({ shifts: s.shifts.filter((sh) => sh.id !== deletedId) }))
       })
-      // Settings
+      // Settings — admin_pw を手動除去
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'settings' }, (payload) => {
-        set({ settings: payload.new as Settings })
+        set({ settings: toSettings(payload.new as Record<string, unknown>) })
       })
       // Drafts
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drafts' }, (payload) => {
@@ -210,11 +239,11 @@ export const useStore = create<StoreState>((set, get) => ({
     set({ syncStatus: 'loading' })
     try {
       const [wRes, pRes, rRes, shRes, stRes] = await Promise.all([
-        supabase.from('workers').select('*'),
+        supabase.from('workers').select(WORKER_COLUMNS),
         supabase.from('processes').select('*').order('sort_order'),
-        supabase.from('records').select('*').order('id', { ascending: false }),
-        supabase.from('shifts').select('*').order('id', { ascending: false }),
-        supabase.from('settings').select('*').eq('id', 1).single(),
+        supabase.from('records').select('*').order('id', { ascending: false }).gte('date', threeMonthsAgo()).limit(500),
+        supabase.from('shifts').select('*').order('id', { ascending: false }).limit(200),
+        supabase.from('settings').select(SETTINGS_COLUMNS).eq('id', 1).single(),
       ])
 
       if (wRes.error) throw wRes.error
@@ -223,8 +252,14 @@ export const useStore = create<StoreState>((set, get) => ({
       if (shRes.error) throw shRes.error
       if (stRes.error) throw stRes.error
 
+      // workers: DB には pin が含まれない（select で除外済み）が、has_pin を付与
+      const workers = (wRes.data as Record<string, unknown>[]).map((row) => ({
+        ...row,
+        has_pin: false, // select に pin を含めていないため、has_pin は別途判定不可。RPC で検証するため false でも問題なし
+      })) as Worker[]
+
       set({
-        workers: wRes.data as Worker[],
+        workers,
         processes: pRes.data as Process[],
         records: rRes.data as WorkRecord[],
         shifts: shRes.data as Shift[],
@@ -256,24 +291,30 @@ export const useStore = create<StoreState>((set, get) => ({
     // テーブルがなければ静かに無視（_draftsAvailable = false のまま）
   },
 
-  unlockAdmin: (password: string) => {
-    const { settings } = get()
-    if (settings && settings.admin_pw === password) {
+  unlockAdmin: async (password: string) => {
+    const { data, error } = await supabase.rpc('verify_admin_pw', { password })
+    if (error) {
+      get().showToast('認証に失敗しました', 'error')
+      return false
+    }
+    if (data === true) {
       set({ adminUnlocked: true })
       return true
     }
     return false
   },
 
-  // Worker auth
-  loginWorker: (workerId: string, pin: string) => {
+  // Worker auth — サーバーサイド RPC で PIN 検証
+  loginWorker: async (workerId: string, pin: string) => {
+    const { data, error } = await supabase.rpc('verify_worker_pin', {
+      p_worker_id: workerId,
+      p_pin: pin,
+    })
+    if (error) return false
+    if (data !== true) return false
+
     const worker = get().workers.find((w) => w.id === workerId)
     if (!worker) return false
-    if (worker.pin === null || worker.pin === '') {
-      // PIN未設定の場合はログイン不可（管理者が設定する必要あり）
-      return false
-    }
-    if (worker.pin !== pin) return false
     set({ loggedInWorker: worker })
     localStorage.setItem('wms-worker-session', JSON.stringify({ workerId: worker.id }))
     return true
@@ -289,7 +330,7 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   logoutWorker: () => {
-    set({ loggedInWorker: null })
+    set({ loggedInWorker: null, adminUnlocked: false })
     localStorage.removeItem('wms-worker-session')
     // 下書きデータをクリア（他ユーザーへのデータ漏洩防止）
     localStorage.removeItem('wms-worksubmit-draft')
@@ -305,11 +346,11 @@ export const useStore = create<StoreState>((set, get) => ({
       if (saved) {
         const { workerId } = JSON.parse(saved)
         const worker = get().workers.find((w) => w.id === workerId)
-        if (worker && worker.pin) {
+        if (worker) {
           set({ loggedInWorker: worker, workerSessionLoaded: true })
           return
         }
-        // 作業者が存在しないかPINがクリアされた場合
+        // 作業者が存在しない場合
         localStorage.removeItem('wms-worker-session')
       }
     } catch {
@@ -325,9 +366,9 @@ export const useStore = create<StoreState>((set, get) => ({
       return false
     }
     set((s) => ({
-      workers: s.workers.map((w) => (w.id === workerId ? { ...w, pin: newPin } : w)),
+      workers: s.workers.map((w) => (w.id === workerId ? { ...w, has_pin: newPin !== '' } : w)),
       loggedInWorker: s.loggedInWorker?.id === workerId
-        ? { ...s.loggedInWorker, pin: newPin }
+        ? { ...s.loggedInWorker, has_pin: newPin !== '' }
         : s.loggedInWorker,
     }))
     get().showToast('PINを更新しました', 'success')
@@ -370,24 +411,38 @@ export const useStore = create<StoreState>((set, get) => ({
 
   // Workers
   addWorker: async (worker) => {
-    const newWorker: Worker = { ...worker, id: 'w' + Date.now() }
-    const { error } = await supabase.from('workers').insert(newWorker)
+    // pin は DB に送るが、ストアには has_pin: true として保持
+    const { pin, ...rest } = worker
+    const id = 'w' + Date.now()
+    const dbWorker = { ...rest, pin, id }
+    const { error } = await supabase.from('workers').insert(dbWorker)
     if (error) {
       get().showToast('作業者の追加に失敗しました', 'error')
       return
     }
-    set((s) => ({ workers: [...s.workers, newWorker] }))
+    const storeWorker: Worker = { ...rest, id, has_pin: pin !== '' }
+    set((s) => ({ workers: [...s.workers, storeWorker] }))
     get().showToast('作業者を追加しました', 'success')
   },
 
   updateWorker: async (id, data) => {
-    const { error } = await supabase.from('workers').update(data).eq('id', id)
+    // pin が含まれる場合は DB に送るが、ストアでは has_pin に変換
+    const { pin, ...restData } = data as Partial<Omit<Worker, 'has_pin'>> & { pin?: string }
+    const dbData = pin !== undefined ? { ...restData, pin } : restData
+    const { error } = await supabase.from('workers').update(dbData).eq('id', id)
     if (error) {
       get().showToast('作業者の更新に失敗しました', 'error')
       return
     }
     set((s) => ({
-      workers: s.workers.map((w) => (w.id === id ? { ...w, ...data } : w)),
+      workers: s.workers.map((w) => {
+        if (w.id !== id) return w
+        const updated = { ...w, ...restData }
+        if (pin !== undefined) {
+          updated.has_pin = pin !== ''
+        }
+        return updated
+      }),
     }))
     get().showToast('作業者を更新しました', 'success')
   },

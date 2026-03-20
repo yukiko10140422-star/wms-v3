@@ -15,8 +15,26 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null)
   const [pin, setPin] = useState('')
   const [shaking, setShaking] = useState(false)
-  const [failedAttempts, setFailedAttempts] = useState(0)
-  const [lockedUntil, setLockedUntil] = useState<number | null>(null)
+  const [failedAttempts, setFailedAttempts] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('wms-login-lockout')
+      if (raw) {
+        const data = JSON.parse(raw)
+        if (data.until && Date.now() < data.until) return data.attempts
+      }
+    } catch { /* ignore */ }
+    return 0
+  })
+  const [lockedUntil, setLockedUntil] = useState<number | null>(() => {
+    try {
+      const raw = sessionStorage.getItem('wms-login-lockout')
+      if (raw) {
+        const data = JSON.parse(raw)
+        if (data.until && Date.now() < data.until) return data.until
+      }
+    } catch { /* ignore */ }
+    return null
+  })
   const [lockoutRemaining, setLockoutRemaining] = useState(0)
   const lockoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -52,8 +70,8 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
     }
   }, [lockedUntil])
 
-  const handleWorkerSelect = useCallback((workerId: string, workerPin: string | null) => {
-    if (workerPin === null || workerPin === '') return
+  const handleWorkerSelect = useCallback((workerId: string, hasPin: boolean) => {
+    if (!hasPin) return
     setSelectedWorkerId(workerId)
     setPin('')
   }, [])
@@ -73,8 +91,8 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
       const next = prev + digit
       if (next.length === 4 && selectedWorkerId) {
         // Delay login check to allow the dot animation to show
-        setTimeout(() => {
-          const success = loginWorker(selectedWorkerId, next)
+        setTimeout(async () => {
+          const success = await loginWorker(selectedWorkerId, next)
           if (success) {
             setFailedAttempts(0)
             setLockedUntil(null)
@@ -84,7 +102,9 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
             const newAttempts = failedAttempts + 1
             setFailedAttempts(newAttempts)
             if (newAttempts >= MAX_ATTEMPTS) {
-              setLockedUntil(Date.now() + LOCKOUT_SECONDS * 1000)
+              const until = Date.now() + LOCKOUT_SECONDS * 1000
+              setLockedUntil(until)
+              try { sessionStorage.setItem('wms-login-lockout', JSON.stringify({ until, attempts: newAttempts })) } catch { /* ignore */ }
             }
             setShaking(true)
             setTimeout(() => {
@@ -141,7 +161,7 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
           <p className="text-center text-muted text-sm mb-6">作業者を選択してください</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {workers.map((worker) => {
-              const hasPin = worker.pin !== null && worker.pin !== ''
+              const hasPin = worker.has_pin
               const initial = worker.name.charAt(0)
 
               return (
@@ -149,7 +169,7 @@ export default function Login({ onLoginSuccess, onAdminAccess }: LoginProps) {
                   key={worker.id}
                   type="button"
                   disabled={!hasPin}
-                  onClick={() => handleWorkerSelect(worker.id, worker.pin)}
+                  onClick={() => handleWorkerSelect(worker.id, worker.has_pin)}
                   className={`
                     relative flex flex-col items-center gap-2 rounded-xl px-3 py-4 transition-all duration-150
                     ${

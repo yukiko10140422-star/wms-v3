@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { LogOut, KeyRound } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { supabase } from '../lib/supabase'
 
 interface MySettingsProps {
   onLogout: () => void
@@ -19,7 +20,12 @@ export default function MySettings({ onLogout }: MySettingsProps) {
   const initial = loggedInWorker.name.charAt(0)
 
   const handlePinChange = async () => {
-    if (currentPin !== loggedInWorker.pin) {
+    // サーバーサイドで現在のPINを検証
+    const { data: pinValid } = await supabase.rpc('verify_worker_pin', {
+      p_worker_id: loggedInWorker.id,
+      p_pin: currentPin,
+    })
+    if (pinValid !== true) {
       showToast('現在のPINが正しくありません', 'error')
       return
     }

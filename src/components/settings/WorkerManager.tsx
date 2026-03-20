@@ -6,8 +6,8 @@ import Modal from '../ui/Modal'
 
 interface WorkerManagerProps {
   workers: Worker[]
-  onAdd: (worker: Omit<Worker, 'id'>) => Promise<void>
-  onUpdate: (id: string, data: Partial<Worker>) => Promise<void>
+  onAdd: (worker: Omit<Worker, 'id' | 'has_pin'> & { pin: string }) => Promise<void>
+  onUpdate: (id: string, data: Partial<Omit<Worker, 'has_pin'>> & { pin?: string }) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }
 
@@ -188,7 +188,7 @@ export default function WorkerManager({
               {w.address && (
                 <div className="text-xs text-muted">{w.address}</div>
               )}
-              {(!w.pin || w.pin === '') && (
+              {!w.has_pin && (
                 <div className="text-[10px] text-red font-bold mt-1">PIN未設定</div>
               )}
               {w.bank_name ? (

@@ -3,7 +3,7 @@ export type Worker = {
   name: string
   address: string
   avatar: string
-  pin: string | null
+  has_pin: boolean
   bank_name: string
   bank_branch: string
   bank_type: string
@@ -73,7 +73,8 @@ export type Settings = {
   bank_type: string
   bank_number: string
   bank_holder: string
-  admin_pw: string
+  admin_pw?: string
+  hourly_rate: number
 }
 
 export type FeatureRequest = {
