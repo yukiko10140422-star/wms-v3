@@ -27,6 +27,15 @@
 | **React Router v7** | ページ切り替え（現在5ページ） |
 | **Zustand** | 軽量状態管理（Redux不要のシンプルさ） |
 
+### テスト
+
+| 技術 | 用途 |
+|------|------|
+| **Vitest** | ユニットテスト |
+| **happy-dom** | テスト用DOM環境 |
+| **@testing-library/react** | Reactコンポーネントテスト |
+| **Playwright** | E2Eテスト |
+
 ### デプロイ
 
 | 項目 | 選定 |

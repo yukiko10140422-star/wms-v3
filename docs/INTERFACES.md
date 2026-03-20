@@ -13,7 +13,7 @@ type Worker = {
   name: string
   address: string
   avatar: string        // base64 or ""
-  pin: string | null    // 4桁PIN
+  has_pin: boolean      // PIN設定済みか（PIN値はクライアントに送信しない）
   bank_name: string
   bank_branch: string
   bank_type: string     // "普通" | "当座"
@@ -95,7 +95,8 @@ type Settings = {
   bank_type: string
   bank_number: string
   bank_holder: string
-  admin_pw: string
+  admin_pw?: string     // クライアントには送信しない（RPC検証）
+  hourly_rate: number   // 時給（デフォルト1200）
 }
 ```
 
@@ -148,13 +149,13 @@ type Store = {
   syncStatus: 'idle' | 'loading' | 'ok' | 'error'
   isOnline: boolean
 
-  // 認証
+  // 認証（サーバーサイドRPC検証）
   adminUnlocked: boolean
-  unlockAdmin: (pin: string) => boolean
+  unlockAdmin: (pin: string) => Promise<boolean>
 
-  // 作業者認証
+  // 作業者認証（サーバーサイドRPC検証）
   loggedInWorker: Worker | null
-  loginWorker: (workerId: string, pin: string) => boolean
+  loginWorker: (workerId: string, pin: string) => Promise<boolean>
   logoutWorker: () => void
   restoreWorkerSession: () => void
   updateWorkerPin: (workerId: string, newPin: string) => Promise<boolean>
@@ -259,3 +260,4 @@ type BadgeProps = {
 |------|------|---------|
 | 初版 | 管理者 | 全インターフェース定義 |
 | Phase 8-11 | main | Worker.pin追加、Shift.type/reason追加、WorkRecord.photos追加、Draft/FeatureRequest型追加、Store認証メソッド追加、PIN認証に変更 |
+| Phase 12-13 | main | Worker.pin→has_pin、Settings.admin_pw除外+hourly_rate追加、unlockAdmin/loginWorker非同期化（RPC）、一括承認・通知バッジ追加 |
