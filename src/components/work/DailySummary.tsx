@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { ClipboardCheck } from 'lucide-react'
 import type { WorkRecord, Worker } from '../../lib/types'
 
@@ -6,7 +7,7 @@ interface DailySummaryProps {
   workers: Worker[]
 }
 
-export default function DailySummary({ todayRecords, workers }: DailySummaryProps) {
+export default memo(function DailySummary({ todayRecords, workers }: DailySummaryProps) {
   if (todayRecords.length === 0) return null
 
   const todaySubmittedNames = [...new Set(todayRecords.map((r) => r.worker_name))]
@@ -43,4 +44,4 @@ export default function DailySummary({ todayRecords, workers }: DailySummaryProp
       </div>
     </div>
   )
-}
+})

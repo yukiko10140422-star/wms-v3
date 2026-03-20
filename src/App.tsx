@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useStore } from './store/useStore'
 import Sidebar from './components/layout/Sidebar'
 import BottomNav from './components/layout/BottomNav'
@@ -7,16 +7,27 @@ import AdminGuard from './components/layout/AdminGuard'
 import Toast from './components/ui/Toast'
 import UpdateNotice from './components/ui/UpdateNotice'
 import UsageGuide from './components/ui/UsageGuide'
+import ErrorBoundary from './components/ui/ErrorBoundary'
 import { useOfflineQueue } from './hooks/useOfflineQueue'
 import { useTheme } from './hooks/useTheme'
 import Login from './pages/Login'
-import WorkSubmit from './pages/WorkSubmit'
-import MyShifts from './pages/MyShifts'
-import MySalary from './pages/MySalary'
-import MySettings from './pages/MySettings'
-import History from './pages/History'
-import ShiftAdmin from './pages/ShiftAdmin'
-import Settings from './pages/Settings'
+
+// 遅延読み込み — 初期バンドルサイズを削減
+const WorkSubmit = lazy(() => import('./pages/WorkSubmit'))
+const MyShifts = lazy(() => import('./pages/MyShifts'))
+const MySalary = lazy(() => import('./pages/MySalary'))
+const MySettings = lazy(() => import('./pages/MySettings'))
+const History = lazy(() => import('./pages/History'))
+const ShiftAdmin = lazy(() => import('./pages/ShiftAdmin'))
+const Settings = lazy(() => import('./pages/Settings'))
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="animate-spin rounded-full h-8 w-8 border-2 border-mango border-t-transparent" />
+    </div>
+  )
+}
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('work')
@@ -207,7 +218,11 @@ export default function App() {
 
         <main className="flex-1 min-w-0 min-h-screen pb-20 lg:pb-0 safe-top">
           <div className="max-w-3xl mx-auto px-4 py-6 lg:px-8 lg:py-8 overflow-x-hidden">
-            {renderPage()}
+            <ErrorBoundary>
+              <Suspense fallback={<PageLoader />}>
+                {renderPage()}
+              </Suspense>
+            </ErrorBoundary>
           </div>
         </main>
       </div>

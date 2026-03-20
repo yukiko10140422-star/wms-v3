@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { GripVertical } from 'lucide-react'
 import Counter from '../ui/Counter'
 import type { Process } from '../../lib/types'
@@ -9,7 +10,7 @@ interface ProcessItemProps {
   dragHandleProps?: Record<string, unknown>
 }
 
-export default function ProcessItem({
+export default memo(function ProcessItem({
   process,
   quantity,
   onQuantityChange,
@@ -64,4 +65,4 @@ export default function ProcessItem({
       </div>
     </div>
   )
-}
+})
