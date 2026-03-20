@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, CheckCircle2, RotateCcw, ClipboardCheck, Eraser, Eye } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, RotateCcw, ClipboardCheck, Eraser, Eye, Clock, Package } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import ProcessList from '../components/work/ProcessList'
 import BonusToggle from '../components/work/BonusToggle'
@@ -12,7 +12,10 @@ import LiveDrafts from '../components/work/LiveDrafts'
 import PhotoAttach from '../components/work/PhotoAttach'
 import { enqueueRecord } from '../hooks/useOfflineQueue'
 import { formatTimeLocal } from '../lib/timerUtils'
+import { calcHourlyTotal } from '../lib/workCalc'
 import type { WorkItem, TimerLogEntry, Draft } from '../lib/types'
+
+type WorkMode = 'piece' | 'hourly'
 
 const DRAFT_KEY = 'wms-worksubmit-draft'
 const LAST_SUBMIT_KEY = 'wms-last-submit'
@@ -21,6 +24,7 @@ const WORKER_DEFAULTS_KEY = 'wms-worker-defaults'
 interface WorkerDefaults {
   bonusOn: boolean
   bonusRate: number
+  workMode?: WorkMode
 }
 
 function loadWorkerDefaults(workerId: string): WorkerDefaults | null {
@@ -105,6 +109,8 @@ export default function WorkSubmit() {
   const [remarks, setRemarks] = useState(() => draft?.remarks || '')
   const [bonusOn, setBonusOn] = useState(() => draft?.bonusOn ?? false)
   const [bonusRate, setBonusRate] = useState(() => draft?.bonusRate ?? settings?.bonus_rate ?? 10)
+  const [workMode, setWorkMode] = useState<WorkMode>('piece')
+  const [hourlyHoursInput, setHourlyHoursInput] = useState(0)
   const [items, setItems] = useState<WorkItem[]>([])
   const [baseTotal, setBaseTotal] = useState(0)
   const [timerData, setTimerData] = useState<{
@@ -172,6 +178,7 @@ export default function WorkSubmit() {
         if (defaults) {
           setBonusOn(defaults.bonusOn)
           setBonusRate(defaults.bonusRate)
+          if (defaults.workMode) setWorkMode(defaults.workMode)
         }
       }
     }
@@ -286,8 +293,12 @@ export default function WorkSubmit() {
     return { items: recalculated, baseTotal: newBaseTotal }
   }
 
-  const bonusAmt = bonusOn ? Math.round(baseTotal * (bonusRate / 100)) : 0
-  const total = baseTotal + bonusAmt
+  const hourlyRate = settings?.hourly_rate ?? 1200
+  const effectiveBaseTotal = workMode === 'hourly'
+    ? calcHourlyTotal(hourlyHoursInput, hourlyRate)
+    : baseTotal
+  const bonusAmt = bonusOn ? Math.round(effectiveBaseTotal * (bonusRate / 100)) : 0
+  const total = effectiveBaseTotal + bonusAmt
 
   // バリデーション → 確認モーダル表示
   const handlePreSubmit = () => {
@@ -312,9 +323,16 @@ export default function WorkSubmit() {
     }
 
     // 3. 加工内容のチェック
-    if (items.length === 0) {
-      showToast('加工内容を入力してください', 'error')
-      return
+    if (workMode === 'hourly') {
+      if (hourlyHoursInput <= 0) {
+        showToast('作業時間を入力してください', 'error')
+        return
+      }
+    } else {
+      if (items.length === 0) {
+        showToast('加工内容を入力してください', 'error')
+        return
+      }
     }
 
     // 4. 同じ作業者・同じ日の重複チェック
@@ -339,18 +357,38 @@ export default function WorkSubmit() {
     }
 
     // 6. 最新単価で再計算してプレビュー表示
-    const recalc = recalculateWithLatestPrices(items)
-    const previewBonusAmt = bonusOn ? Math.round(recalc.baseTotal * (bonusRate / 100)) : 0
-
-    setConfirmSummary({
-      workerName: loggedInWorker.name,
-      date: workDate,
-      address,
-      items: recalc.items,
-      baseTotal: recalc.baseTotal,
-      bonusAmt: previewBonusAmt,
-      total: recalc.baseTotal + previewBonusAmt,
-    })
+    if (workMode === 'hourly') {
+      const hourlyTotal = calcHourlyTotal(hourlyHoursInput, hourlyRate)
+      const previewBonusAmt = bonusOn ? Math.round(hourlyTotal * (bonusRate / 100)) : 0
+      const hourlyItems: WorkItem[] = [{
+        name: '時給作業',
+        price: hourlyRate,
+        qty: hourlyHoursInput,
+        sub: hourlyTotal,
+        isHourly: true,
+      }]
+      setConfirmSummary({
+        workerName: loggedInWorker.name,
+        date: workDate,
+        address,
+        items: hourlyItems,
+        baseTotal: hourlyTotal,
+        bonusAmt: previewBonusAmt,
+        total: hourlyTotal + previewBonusAmt,
+      })
+    } else {
+      const recalc = recalculateWithLatestPrices(items)
+      const previewBonusAmt = bonusOn ? Math.round(recalc.baseTotal * (bonusRate / 100)) : 0
+      setConfirmSummary({
+        workerName: loggedInWorker.name,
+        date: workDate,
+        address,
+        items: recalc.items,
+        baseTotal: recalc.baseTotal,
+        bonusAmt: previewBonusAmt,
+        total: recalc.baseTotal + previewBonusAmt,
+      })
+    }
   }
 
   // 確認後の実際の提出処理
@@ -360,8 +398,24 @@ export default function WorkSubmit() {
     setSubmitState('submitting')
 
     try {
-      const recalc = recalculateWithLatestPrices(items)
-      const finalBaseTotal = recalc.baseTotal
+      let finalItems: WorkItem[]
+      let finalBaseTotal: number
+
+      if (workMode === 'hourly') {
+        finalBaseTotal = calcHourlyTotal(hourlyHoursInput, hourlyRate)
+        finalItems = [{
+          name: '時給作業',
+          price: hourlyRate,
+          qty: hourlyHoursInput,
+          sub: finalBaseTotal,
+          isHourly: true,
+        }]
+      } else {
+        const recalc = recalculateWithLatestPrices(items)
+        finalBaseTotal = recalc.baseTotal
+        finalItems = recalc.items
+      }
+
       const finalBonusAmt = bonusOn ? Math.round(finalBaseTotal * (bonusRate / 100)) : 0
       const finalTotal = finalBaseTotal + finalBonusAmt
 
@@ -374,10 +428,10 @@ export default function WorkSubmit() {
         bonus_on: bonusOn,
         bonus_amt: finalBonusAmt,
         bonus_rate: bonusRate,
-        items: recalc.items,
+        items: finalItems,
         base_total: finalBaseTotal,
         total: finalTotal,
-        hours: timerData?.hours ?? 0,
+        hours: workMode === 'hourly' ? hourlyHoursInput : (timerData?.hours ?? 0),
         timer_log: timerData?.timer_log ?? [],
         timer_work_ms: timerData?.timer_work_ms ?? 0,
         photos: photos,
@@ -398,7 +452,7 @@ export default function WorkSubmit() {
       setMasterChanged(false)
 
       // 作業者ごとのデフォルト設定を保存
-      saveWorkerDefaults(loggedInWorker.id, { bonusOn, bonusRate })
+      saveWorkerDefaults(loggedInWorker.id, { bonusOn, bonusRate, workMode })
 
       try {
         localStorage.setItem(LAST_SUBMIT_KEY, JSON.stringify({
@@ -426,7 +480,7 @@ export default function WorkSubmit() {
         recordId,
         workerName: loggedInWorker.name,
         date: workDate,
-        items: recalc.items,
+        items: finalItems,
         baseTotal: finalBaseTotal,
         bonusAmt: finalBonusAmt,
         total: finalTotal,
@@ -446,6 +500,7 @@ export default function WorkSubmit() {
     setBonusRate(settings?.bonus_rate ?? 10)
     setItems([])
     setBaseTotal(0)
+    setHourlyHoursInput(0)
     setTimerData(null)
     setPhotos([])
     setSubmitState('idle')
@@ -612,26 +667,107 @@ export default function WorkSubmit() {
         </div>
       </div>
 
-      {/* Process List */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-bold text-muted">加工内容</label>
-        <div className="bg-white rounded-xl border border-border p-3">
-          <ProcessList onItemsChange={handleItemsChange} resetSignal={resetSignal} importData={importData} />
-        </div>
+      {/* Work Mode Toggle */}
+      <div className="bg-white rounded-xl border border-border p-1 flex">
+        <button
+          type="button"
+          onClick={() => setWorkMode('piece')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+            workMode === 'piece'
+              ? 'bg-mango text-white shadow-sm'
+              : 'text-muted hover:text-ink'
+          }`}
+        >
+          <Package className="w-4 h-4" />
+          単価モード
+        </button>
+        <button
+          type="button"
+          onClick={() => setWorkMode('hourly')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+            workMode === 'hourly'
+              ? 'bg-mango text-white shadow-sm'
+              : 'text-muted hover:text-ink'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          時給モード
+        </button>
       </div>
 
-      {/* Bonus Toggle */}
-      <div className="bg-white rounded-xl border border-border p-4">
-        <BonusToggle
-          enabled={bonusOn}
-          rate={bonusRate}
-          onToggle={() => setBonusOn((prev) => !prev)}
-          onRateChange={setBonusRate}
-        />
-      </div>
+      {workMode === 'piece' ? (
+        <>
+          {/* Process List */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-muted">加工内容</label>
+            <div className="bg-white rounded-xl border border-border p-3">
+              <ProcessList onItemsChange={handleItemsChange} resetSignal={resetSignal} importData={importData} />
+            </div>
+          </div>
 
-      {/* Timer */}
-      <Timer ref={timerRef} onApply={handleTimerApply} />
+          {/* Bonus Toggle */}
+          <div className="bg-white rounded-xl border border-border p-4">
+            <BonusToggle
+              enabled={bonusOn}
+              rate={bonusRate}
+              onToggle={() => setBonusOn((prev) => !prev)}
+              onRateChange={setBonusRate}
+            />
+          </div>
+
+          {/* Timer */}
+          <Timer ref={timerRef} onApply={handleTimerApply} />
+        </>
+      ) : (
+        <>
+          {/* Hourly Mode Input */}
+          <div className="bg-white rounded-xl border border-border p-5 space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="w-5 h-5 text-mango" />
+              <span className="text-sm font-bold text-ink">時給作業</span>
+              <span className="ml-auto text-xs text-muted font-mono">¥{hourlyRate.toLocaleString()}/h</span>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-muted">作業時間（時間）</label>
+              <input
+                type="number"
+                step={0.5}
+                min={0}
+                value={hourlyHoursInput || ''}
+                onChange={(e) => setHourlyHoursInput(parseFloat(e.target.value) || 0)}
+                placeholder="例: 3.5"
+                className="w-full rounded-xl border border-border px-4 py-3 text-lg font-mono text-center focus:border-mango focus:outline-none focus:ring-2 focus:ring-mango/10"
+              />
+            </div>
+
+            {hourlyHoursInput > 0 && (
+              <div className="flex justify-between items-center pt-2 border-t border-border">
+                <span className="text-sm text-muted">{hourlyHoursInput}h × ¥{hourlyRate.toLocaleString()}</span>
+                <span className="text-lg font-black text-mango-dark font-mono">
+                  ¥{calcHourlyTotal(hourlyHoursInput, hourlyRate).toLocaleString()}
+                </span>
+              </div>
+            )}
+
+            {/* Timer in hourly mode */}
+            <Timer ref={timerRef} onApply={(result) => {
+              handleTimerApply(result)
+              setHourlyHoursInput(result.hours)
+            }} />
+          </div>
+
+          {/* Bonus Toggle */}
+          <div className="bg-white rounded-xl border border-border p-4">
+            <BonusToggle
+              enabled={bonusOn}
+              rate={bonusRate}
+              onToggle={() => setBonusOn((prev) => !prev)}
+              onRateChange={setBonusRate}
+            />
+          </div>
+        </>
+      )}
 
       {/* Remarks */}
       <div className="space-y-1.5">
@@ -652,8 +788,10 @@ export default function WorkSubmit() {
 
       {/* Total Panel */}
       <TotalPanel
-        items={items}
-        baseTotal={baseTotal}
+        items={workMode === 'hourly' && hourlyHoursInput > 0
+          ? [{ name: '時給作業', price: hourlyRate, qty: hourlyHoursInput, sub: calcHourlyTotal(hourlyHoursInput, hourlyRate), isHourly: true }]
+          : items}
+        baseTotal={effectiveBaseTotal}
         bonusOn={bonusOn}
         bonusRate={bonusRate}
       />
