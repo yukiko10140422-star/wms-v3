@@ -255,6 +255,11 @@
 | 通知バッジ | 完了 | main | 未承認件数をBottomNav/Sidebarに表示 |
 | 一括承認 | 完了 | main | 履歴画面でチェックボックス選択→まとめて承認/却下 |
 | 時給/単価モード切替 | 完了 | main | 作業入力ページにトグル、時給はsettings連動 |
+| PINパッド統合 | 完了 | main | Login/AdminGuardの150行重複解消→PinPad.tsx |
+| 定数一元管理 | 完了 | main | constants.ts+storageKeys.ts |
+| WorkSubmit分割 | 完了 | main | 996→734行、モーダル・ヘルパー・サマリー抽出 |
+| ストアスライス分割 | 完了 | main | 647→73行、10スライスに分割 |
+| MyShifts/ShiftAdmin分割 | 完了 | main | 639→429行、116行。CalendarOverview/AdminCalendar抽出 |
 
 ---
 
