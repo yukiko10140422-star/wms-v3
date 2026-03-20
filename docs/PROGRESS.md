@@ -260,6 +260,8 @@
 | WorkSubmit分割 | 完了 | main | 996→734行、モーダル・ヘルパー・サマリー抽出 |
 | ストアスライス分割 | 完了 | main | 647→73行、10スライスに分割 |
 | MyShifts/ShiftAdmin分割 | 完了 | main | 639→429行、116行。CalendarOverview/AdminCalendar抽出 |
+| 型安全性強化 | 完了 | main | 型ガード8個、asアサーション13箇所→型ガード置換 |
+| テストカバレッジ強化 | 完了 | main | 37→106テスト（storage/typeGuards/auth/records） |
 
 ---
 
