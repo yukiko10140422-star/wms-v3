@@ -13,6 +13,7 @@ interface SidebarProps {
   workerAvatar?: string
   onLogout?: () => void
   onSwitchWorker?: () => void
+  pendingCount?: number
 }
 
 interface NavItem {
@@ -35,7 +36,7 @@ const adminItems: NavItem[] = [
   { id: 'settings', label: '設定', icon: <Settings className="w-5 h-5" />, admin: true },
 ]
 
-export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked, theme, onThemeChange, workerName, workerAvatar, onLogout, onSwitchWorker }: SidebarProps) {
+export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked, theme, onThemeChange, workerName, workerAvatar, onLogout, onSwitchWorker, pendingCount = 0 }: SidebarProps) {
   const handleClick = (item: NavItem) => {
     if (item.admin && !adminUnlocked) {
       onRequestAdmin(item.id)
@@ -127,7 +128,14 @@ export default function Sidebar({ currentPage, onNavigate, onRequestAdmin, onOpe
 
         {/* Admin Section */}
         <div>
-          <div className="text-[10px] uppercase tracking-wider opacity-40 px-3 mb-2">管理者</div>
+          <div className="text-[10px] uppercase tracking-wider opacity-40 px-3 mb-2 flex items-center gap-2">
+            管理者
+            {pendingCount > 0 && (
+              <span className="min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1 opacity-100">
+                {pendingCount > 99 ? '99+' : pendingCount}
+              </span>
+            )}
+          </div>
           <div className="space-y-1">
             {adminItems.map((item) => (
               <button

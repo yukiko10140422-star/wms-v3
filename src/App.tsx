@@ -36,6 +36,12 @@ export default function App() {
   const logoutWorker = useStore((s) => s.logoutWorker)
   const loginWorkerAsAdmin = useStore((s) => s.loginWorkerAsAdmin)
   const workers = useStore((s) => s.workers)
+  const records = useStore((s) => s.records)
+  const shifts = useStore((s) => s.shifts)
+
+  // 未承認件数（records + shifts の pending 合計）
+  const pendingCount = records.filter((r) => r.status === 'pending').length
+    + shifts.filter((s) => s.status === 'pending').length
 
   const { queueLength } = useOfflineQueue()
   const { theme, setTheme } = useTheme()
@@ -196,6 +202,7 @@ export default function App() {
           workerAvatar={loggedInWorker?.avatar}
           onLogout={() => { logoutWorker(); setCurrentPage('settings') }}
           onSwitchWorker={() => { logoutWorker(); setCurrentPage('work') }}
+          pendingCount={pendingCount}
         />
 
         <main className="flex-1 min-w-0 min-h-screen pb-20 lg:pb-0 safe-top">
@@ -216,6 +223,7 @@ export default function App() {
         workerName={loggedInWorker?.name}
         onLogout={() => { logoutWorker(); setCurrentPage('settings') }}
         onSwitchWorker={() => { logoutWorker(); setCurrentPage('work') }}
+        pendingCount={pendingCount}
       />
 
       <AdminGuard

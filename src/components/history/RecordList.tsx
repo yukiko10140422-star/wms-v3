@@ -8,6 +8,8 @@ interface RecordListProps {
   onReject: (id: number) => void
   onDelete: (id: number) => void
   onPrint: (id: number) => void
+  selectedIds?: Set<number>
+  onToggleSelect?: (id: number) => void
 }
 
 export default function RecordList({
@@ -17,6 +19,8 @@ export default function RecordList({
   onReject,
   onDelete,
   onPrint,
+  selectedIds,
+  onToggleSelect,
 }: RecordListProps) {
   if (!records.length) {
     return (
@@ -37,6 +41,8 @@ export default function RecordList({
           onReject={onReject}
           onDelete={onDelete}
           onPrint={onPrint}
+          selected={selectedIds?.has(record.id) ?? false}
+          onToggleSelect={onToggleSelect}
         />
       ))}
     </div>

@@ -14,6 +14,7 @@ interface BottomNavProps {
   workerName?: string
   onLogout?: () => void
   onSwitchWorker?: () => void
+  pendingCount?: number
 }
 
 const mainItems = [
@@ -29,7 +30,7 @@ const adminMenuItems = [
   { id: 'settings', label: '設定', icon: Settings },
 ]
 
-export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked, theme, onThemeChange, workerName, onLogout, onSwitchWorker }: BottomNavProps) {
+export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onOpenGuide, adminUnlocked, theme, onThemeChange, workerName, onLogout, onSwitchWorker, pendingCount = 0 }: BottomNavProps) {
   const [showAdminMenu, setShowAdminMenu] = useState(false)
 
   const handleAdminItemClick = (id: string) => {
@@ -165,13 +166,18 @@ export default function BottomNav({ currentPage, onNavigate, onRequestAdmin, onO
           <button
             onClick={() => setShowAdminMenu(true)}
             className={`
-              flex flex-col items-center gap-0.5 px-3 py-1 cursor-pointer
+              relative flex flex-col items-center gap-0.5 px-3 py-1 cursor-pointer
               transition-colors
               ${['history', 'shift-manage', 'settings'].includes(currentPage) ? 'text-mango' : 'text-muted'}
             `}
           >
             <Shield className="w-5 h-5" />
             <span className="text-[10px]">管理者</span>
+            {pendingCount > 0 && (
+              <span className="absolute -top-0.5 right-0.5 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
+                {pendingCount > 99 ? '99+' : pendingCount}
+              </span>
+            )}
           </button>
         </div>
       </nav>

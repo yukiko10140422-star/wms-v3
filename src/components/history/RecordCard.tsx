@@ -13,6 +13,8 @@ interface RecordCardProps {
   onReject: (id: number) => void
   onDelete: (id: number) => void
   onPrint: (id: number) => void
+  selected?: boolean
+  onToggleSelect?: (id: number) => void
 }
 
 export default function RecordCard({
@@ -22,6 +24,8 @@ export default function RecordCard({
   onReject,
   onDelete,
   onPrint,
+  selected = false,
+  onToggleSelect,
 }: RecordCardProps) {
   const [expanded, setExpanded] = useState(false)
 
@@ -44,6 +48,15 @@ export default function RecordCard({
         className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-mango-light transition-colors flex-wrap"
         onClick={() => setExpanded(!expanded)}
       >
+        {adminUnlocked && onToggleSelect && record.status === 'pending' && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(e) => { e.stopPropagation(); onToggleSelect(record.id) }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-4 h-4 accent-mango rounded flex-shrink-0"
+          />
+        )}
         {avatar}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">

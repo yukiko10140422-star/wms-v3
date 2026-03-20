@@ -5,7 +5,7 @@ import WorkerChart from '../components/history/WorkerChart'
 import RecordList from '../components/history/RecordList'
 import PaymentDoc from '../components/print/PaymentDoc'
 import Button from '../components/ui/Button'
-import { Printer, Download, ArrowUpDown } from 'lucide-react'
+import { Printer, Download, CheckCheck, XCircle } from 'lucide-react'
 
 export default function History() {
   const {
@@ -24,6 +24,8 @@ export default function History() {
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'total-desc' | 'total-asc'>('date-desc')
   const [showPrint, setShowPrint] = useState(false)
   const [printRecords, setPrintRecords] = useState<typeof records | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkProcessing, setBulkProcessing] = useState(false)
 
   const workerNames = useMemo(
     () => [...new Set(records.map((r) => r.worker_name))],
@@ -79,6 +81,48 @@ export default function History() {
       }
     },
     [records]
+  )
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const toggleSelectAll = useCallback(() => {
+    const pendingIds = filteredRecords.filter((r) => r.status === 'pending').map((r) => r.id)
+    setSelectedIds((prev) => {
+      const allSelected = pendingIds.every((id) => prev.has(id))
+      return allSelected ? new Set() : new Set(pendingIds)
+    })
+  }, [filteredRecords])
+
+  const handleBulkApprove = useCallback(async () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`${selectedIds.size}件を承認しますか？`)) return
+    setBulkProcessing(true)
+    await Promise.all([...selectedIds].map((id) => updateRecordStatus(id, 'approved')))
+    setSelectedIds(new Set())
+    setBulkProcessing(false)
+    showToast(`${selectedIds.size}件を承認しました`, 'success')
+  }, [selectedIds, updateRecordStatus, showToast])
+
+  const handleBulkReject = useCallback(async () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`${selectedIds.size}件を却下しますか？`)) return
+    setBulkProcessing(true)
+    await Promise.all([...selectedIds].map((id) => updateRecordStatus(id, 'rejected')))
+    setSelectedIds(new Set())
+    setBulkProcessing(false)
+    showToast(`${selectedIds.size}件を却下しました`, 'info')
+  }, [selectedIds, updateRecordStatus, showToast])
+
+  const pendingInView = useMemo(
+    () => filteredRecords.filter((r) => r.status === 'pending').length,
+    [filteredRecords]
   )
 
   const handleOpenPrintPreview = () => {
@@ -227,6 +271,36 @@ export default function History() {
         </div>
       </div>
 
+      {/* Bulk Actions */}
+      {adminUnlocked && pendingInView > 0 && (
+        <div className="flex items-center gap-3 flex-wrap mb-4 bg-mango-light/30 border border-mango/20 rounded-xl px-4 py-3">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={pendingInView > 0 && filteredRecords.filter((r) => r.status === 'pending').every((r) => selectedIds.has(r.id))}
+              onChange={toggleSelectAll}
+              className="w-4 h-4 accent-mango rounded"
+            />
+            <span className="font-bold text-ink">全選択 ({pendingInView}件)</span>
+          </label>
+          {selectedIds.size > 0 && (
+            <>
+              <span className="text-xs text-muted">{selectedIds.size}件選択中</span>
+              <div className="flex gap-2 ml-auto">
+                <Button variant="success" size="sm" loading={bulkProcessing} onClick={handleBulkApprove}>
+                  <CheckCheck className="w-4 h-4" />
+                  一括承認
+                </Button>
+                <Button variant="secondary" size="sm" loading={bulkProcessing} onClick={handleBulkReject}>
+                  <XCircle className="w-4 h-4" />
+                  一括却下
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Worker Chart */}
       {filteredRecords.length > 0 && (
         <WorkerChart records={filteredRecords} filterMonth={filterMonth} />
@@ -245,6 +319,8 @@ export default function History() {
         onReject={handleReject}
         onDelete={handleDelete}
         onPrint={handlePrint}
+        selectedIds={selectedIds}
+        onToggleSelect={toggleSelect}
       />
 
       {/* Print Preview */}

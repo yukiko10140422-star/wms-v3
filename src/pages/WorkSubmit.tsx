@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, CheckCircle2, RotateCcw, ClipboardCheck, Eraser } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, RotateCcw, ClipboardCheck, Eraser, Eye } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import ProcessList from '../components/work/ProcessList'
 import BonusToggle from '../components/work/BonusToggle'
@@ -16,6 +16,32 @@ import type { WorkItem, TimerLogEntry, Draft } from '../lib/types'
 
 const DRAFT_KEY = 'wms-worksubmit-draft'
 const LAST_SUBMIT_KEY = 'wms-last-submit'
+const WORKER_DEFAULTS_KEY = 'wms-worker-defaults'
+
+interface WorkerDefaults {
+  bonusOn: boolean
+  bonusRate: number
+}
+
+function loadWorkerDefaults(workerId: string): WorkerDefaults | null {
+  try {
+    const raw = localStorage.getItem(WORKER_DEFAULTS_KEY)
+    if (!raw) return null
+    const all = JSON.parse(raw) as Record<string, WorkerDefaults>
+    return all[workerId] ?? null
+  } catch {
+    return null
+  }
+}
+
+function saveWorkerDefaults(workerId: string, defaults: WorkerDefaults) {
+  try {
+    const raw = localStorage.getItem(WORKER_DEFAULTS_KEY)
+    const all = raw ? JSON.parse(raw) as Record<string, WorkerDefaults> : {}
+    all[workerId] = defaults
+    localStorage.setItem(WORKER_DEFAULTS_KEY, JSON.stringify(all))
+  } catch { /* ignore */ }
+}
 
 interface FormDraft {
   workerId: string | null
@@ -101,6 +127,17 @@ export default function WorkSubmit() {
     total: number
   } | null>(null)
 
+  // 提出前確認用
+  const [confirmSummary, setConfirmSummary] = useState<{
+    workerName: string
+    date: string
+    address: string
+    items: WorkItem[]
+    baseTotal: number
+    bonusAmt: number
+    total: number
+  } | null>(null)
+
   // マスタデータ変更検知用
   const [masterChanged, setMasterChanged] = useState(false)
   const prevProcessesRef = useRef<string>('')
@@ -123,10 +160,20 @@ export default function WorkSubmit() {
     prevWorkersRef.current = workersKey
   }, [processes, workers, hasInput])
 
-  // ログイン中の作業者の住所を自動設定
+  // ログイン中の作業者の住所・デフォルト設定を自動適用
   useEffect(() => {
-    if (loggedInWorker && !address && !draft?.address) {
-      setAddress(loggedInWorker.address || '')
+    if (loggedInWorker) {
+      if (!address && !draft?.address) {
+        setAddress(loggedInWorker.address || '')
+      }
+      // 作業者ごとのデフォルト設定を適用（ドラフト復元がない場合のみ）
+      if (!draft?.bonusOn && !draft?.bonusRate) {
+        const defaults = loadWorkerDefaults(loggedInWorker.id)
+        if (defaults) {
+          setBonusOn(defaults.bonusOn)
+          setBonusRate(defaults.bonusRate)
+        }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedInWorker])
@@ -242,7 +289,8 @@ export default function WorkSubmit() {
   const bonusAmt = bonusOn ? Math.round(baseTotal * (bonusRate / 100)) : 0
   const total = baseTotal + bonusAmt
 
-  const handleSubmit = async () => {
+  // バリデーション → 確認モーダル表示
+  const handlePreSubmit = () => {
     // 1. 作業者のログインチェック
     if (!loggedInWorker) {
       showToast('ログインしてください', 'error')
@@ -251,9 +299,9 @@ export default function WorkSubmit() {
 
     // 2. 日付のチェック
     const workDateObj = new Date(workDate)
-    const today = new Date()
-    today.setHours(23, 59, 59, 999)
-    if (workDateObj > today) {
+    const todayDate = new Date()
+    todayDate.setHours(23, 59, 59, 999)
+    if (workDateObj > todayDate) {
       showToast('未来の日付では提出できません', 'error')
       return
     }
@@ -281,10 +329,8 @@ export default function WorkSubmit() {
     }
 
     // 5. タイマーが動作中なら自動適用
-    let currentTimerData = timerData
-    if (!currentTimerData && timerRef.current?.hasData()) {
+    if (!timerData && timerRef.current?.hasData()) {
       const result = timerRef.current.apply()
-      currentTimerData = result
       setTimerData(result)
       const logText = result.timer_log
         .map((e) => `[${formatTimeLocal(e.time)}] ${e.type}`)
@@ -292,10 +338,28 @@ export default function WorkSubmit() {
       setRemarks((prev) => (prev ? `${prev}\n${logText}` : logText))
     }
 
+    // 6. 最新単価で再計算してプレビュー表示
+    const recalc = recalculateWithLatestPrices(items)
+    const previewBonusAmt = bonusOn ? Math.round(recalc.baseTotal * (bonusRate / 100)) : 0
+
+    setConfirmSummary({
+      workerName: loggedInWorker.name,
+      date: workDate,
+      address,
+      items: recalc.items,
+      baseTotal: recalc.baseTotal,
+      bonusAmt: previewBonusAmt,
+      total: recalc.baseTotal + previewBonusAmt,
+    })
+  }
+
+  // 確認後の実際の提出処理
+  const handleSubmit = async () => {
+    if (!loggedInWorker || !confirmSummary) return
+    setConfirmSummary(null)
     setSubmitState('submitting')
 
     try {
-      // 6. 最新単価で再計算
       const recalc = recalculateWithLatestPrices(items)
       const finalBaseTotal = recalc.baseTotal
       const finalBonusAmt = bonusOn ? Math.round(finalBaseTotal * (bonusRate / 100)) : 0
@@ -313,9 +377,9 @@ export default function WorkSubmit() {
         items: recalc.items,
         base_total: finalBaseTotal,
         total: finalTotal,
-        hours: currentTimerData?.hours ?? 0,
-        timer_log: currentTimerData?.timer_log ?? [],
-        timer_work_ms: currentTimerData?.timer_work_ms ?? 0,
+        hours: timerData?.hours ?? 0,
+        timer_log: timerData?.timer_log ?? [],
+        timer_work_ms: timerData?.timer_work_ms ?? 0,
         photos: photos,
         status: 'pending' as const,
       }
@@ -325,16 +389,17 @@ export default function WorkSubmit() {
         recordId = await addRecord(recordData)
         if (!recordId) return
       } else {
-        // オフライン時はキューに保存
         enqueueRecord(recordData)
-        recordId = Date.now() // ローカル仮ID
+        recordId = Date.now()
         showToast('オフラインで保存しました（接続時に自動送信します）', 'info')
       }
 
       setSubmitState('done')
       setMasterChanged(false)
 
-      // 前回提出データをlocalStorageに保存
+      // 作業者ごとのデフォルト設定を保存
+      saveWorkerDefaults(loggedInWorker.id, { bonusOn, bonusRate })
+
       try {
         localStorage.setItem(LAST_SUBMIT_KEY, JSON.stringify({
           workerId: loggedInWorker.id,
@@ -357,7 +422,6 @@ export default function WorkSubmit() {
         }))
       } catch { /* ignore */ }
 
-      // 提出完了サマリーを表示
       setSubmittedSummary({
         recordId,
         workerName: loggedInWorker.name,
@@ -602,7 +666,7 @@ export default function WorkSubmit() {
           className="flex-1"
           loading={submitState === 'submitting'}
           disabled={submitState === 'done' || !loggedInWorker}
-          onClick={handleSubmit}
+          onClick={handlePreSubmit}
         >
           {buttonText}
         </Button>
@@ -620,6 +684,96 @@ export default function WorkSubmit() {
           <Eraser className="w-4 h-4" />
         </Button>
       </div>
+
+      {/* 提出前確認モーダル */}
+      <AnimatePresence>
+        {confirmSummary && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 safe-top safe-bottom"
+            onClick={() => setConfirmSummary(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', duration: 0.3 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-14 h-14 rounded-full bg-mango-light flex items-center justify-center">
+                  <Eye className="w-8 h-8 text-mango" />
+                </div>
+                <h3 className="text-lg font-black text-ink">内容を確認</h3>
+                <p className="text-xs text-muted">以下の内容で提出します。よろしいですか？</p>
+              </div>
+
+              <div className="bg-cream rounded-xl p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">作業者</span>
+                  <span className="font-bold text-ink">{confirmSummary.workerName}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">作業日</span>
+                  <span className="font-mono text-ink">{confirmSummary.date}</span>
+                </div>
+                {confirmSummary.address && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted">住所</span>
+                    <span className="text-ink text-right max-w-[60%] truncate">{confirmSummary.address}</span>
+                  </div>
+                )}
+                <div className="border-t border-border my-1" />
+                {confirmSummary.items.map((item, i) => (
+                  <div key={i} className="flex justify-between text-xs text-ink/70">
+                    <span>{item.name}</span>
+                    <span className="font-mono">
+                      {item.isHourly ? `${item.qty}h` : `${item.qty}個`} × ¥{item.price.toLocaleString()} = ¥{item.sub.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+                <div className="border-t border-border my-1" />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">小計</span>
+                  <span className="font-mono font-bold">¥{confirmSummary.baseTotal.toLocaleString()}</span>
+                </div>
+                {confirmSummary.bonusAmt > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted">ボーナス</span>
+                    <span className="font-mono font-bold text-green">+¥{confirmSummary.bonusAmt.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-base font-black">
+                  <span>合計</span>
+                  <span className="text-mango-dark font-mono">¥{confirmSummary.total.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="flex-1"
+                  onClick={() => setConfirmSummary(null)}
+                >
+                  戻る
+                </Button>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="flex-1"
+                  onClick={handleSubmit}
+                >
+                  提出する
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 提出完了確認モーダル */}
       <AnimatePresence>
