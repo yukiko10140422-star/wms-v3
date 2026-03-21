@@ -26,3 +26,8 @@ tsconfig.tsbuildinfo
 Thumbs.db
 
 .vercel
+
+# Playwright
+.playwright-mcp/
+playwright-report/
+test-results/
